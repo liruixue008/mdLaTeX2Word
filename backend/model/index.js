@@ -3,8 +3,61 @@ const path = require('path');
 const MarkdownIt = require('markdown-it');
 const tm = require('markdown-it-texmath');
 const katex = require('katex');
-const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel, Math, Numbering } = require('docx');
+const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel, Math, Numbering, XmlComponent, Attributes } = require('docx');
 const { logger } = require('../utils');
+const xmljs = require('xml-js');
+
+class AnyXmlComponent extends XmlComponent {
+    constructor(rootName, attributes, children) {
+        super(rootName);
+        if (attributes) {
+            this.root.push(new Attributes(attributes));
+        }
+        if (children) {
+            for (const child of children) {
+                this.root.push(child);
+            }
+        }
+    }
+}
+
+/**
+ * Convert LaTeX to docx XmlComponent
+ */
+const convertLatexToDocxMath = async (latex, isBlock = false) => {
+    try {
+        const { mml2omml } = await import('mathml2omml');
+        const mathml = katex.renderToString(latex, { output: 'mathml', throwOnError: false });
+        // Extract the <math> tag
+        const mathMatch = mathml.match(/<math[^>]*>.*<\/math>/);
+        if (!mathMatch) {
+            logger.warn('Failed to extract MathML from Katex output');
+            return new TextRun(latex);
+        }
+        const mathmlClean = mathMatch[0];
+
+        const ommlXml = mml2omml(mathmlClean);
+        const jsObj = xmljs.xml2js(ommlXml, { compact: false });
+
+        const ommlToDocx = (ommlNode) => {
+            if (ommlNode.type === 'text') {
+                return ommlNode.text;
+            }
+            if (ommlNode.type === 'element') {
+                const children = (ommlNode.elements || []).map(ommlToDocx);
+                return new AnyXmlComponent(ommlNode.name, ommlNode.attributes, children);
+            }
+            return null;
+        };
+
+        const rootElement = jsObj.elements[0];
+        const converted = ommlToDocx(rootElement);
+        return converted;
+    } catch (error) {
+        logger.error('Error converting LaTeX to OMML:', error);
+        return new TextRun(latex);
+    }
+};
 
 // Initialize markdown-it with LaTeX support
 const md = new MarkdownIt({
@@ -43,7 +96,7 @@ const parseMarkdown = (content) => {
 /**
  * Convert Markdown tokens to Word document paragraphs
  */
-const tokensToDocxParagraphs = (tokens) => {
+const tokensToDocxParagraphs = async (tokens) => {
     const paragraphs = [];
     let currentParagraph = [];
     let listLevel = 0;
@@ -74,7 +127,7 @@ const tokensToDocxParagraphs = (tokens) => {
                 break;
 
             case 'inline':
-                const textRuns = parseInlineContent(token.content, token.children);
+                const textRuns = await parseInlineContent(token.content, token.children);
                 currentParagraph.push(...textRuns);
                 break;
 
@@ -144,10 +197,9 @@ const tokensToDocxParagraphs = (tokens) => {
                 break;
 
             case 'math_block':
+                const mathComponent = await convertLatexToDocxMath(token.content, true);
                 paragraphs.push(new Paragraph({
-                    children: [new Math({
-                        children: [new TextRun(token.content)]
-                    })],
+                    children: [mathComponent],
                     alignment: AlignmentType.CENTER,
                     spacing: { before: 240, after: 240 }
                 }));
@@ -162,7 +214,7 @@ const tokensToDocxParagraphs = (tokens) => {
 /**
  * Parse inline content including text, bold, italic, code, and LaTeX
  */
-const parseInlineContent = (content, children) => {
+const parseInlineContent = async (content, children) => {
     const textRuns = [];
 
     if (!children || children.length === 0) {
@@ -219,9 +271,8 @@ const parseInlineContent = (content, children) => {
                 break;
 
             case 'math_inline':
-                textRuns.push(new Math({
-                    children: [new TextRun(child.content)]
-                }));
+                const mathComp = await convertLatexToDocxMath(child.content);
+                textRuns.push(mathComp);
                 break;
 
             default:
@@ -229,9 +280,9 @@ const parseInlineContent = (content, children) => {
                 if (child.content) {
                     // Check if it's a LaTeX formula (contains $ or $$) - though markdown-it-texmath should have caught it
                     if (child.content.includes('$')) {
-                        textRuns.push(new Math({
-                            children: [new TextRun(child.content.replace(/\$/g, ''))]
-                        }));
+                        const latex = child.content.replace(/\$/g, '');
+                        const mComp = await convertLatexToDocxMath(latex);
+                        textRuns.push(mComp);
                     } else {
                         textRuns.push(new TextRun(child.content));
                     }
@@ -257,7 +308,7 @@ const convertMarkdownToWord = async (inputPath, outputPath) => {
         const tokens = parseMarkdown(markdownContent);
 
         // Convert to Word paragraphs
-        const paragraphs = tokensToDocxParagraphs(tokens);
+        const paragraphs = await tokensToDocxParagraphs(tokens);
 
         // Create Word document
         const doc = new Document({
@@ -351,10 +402,68 @@ const convertMarkdownContentToWord = async (content, outputPath) => {
         const tokens = parseMarkdown(content);
 
         // Convert to Word paragraphs
-        const paragraphs = tokensToDocxParagraphs(tokens);
+        const paragraphs = await tokensToDocxParagraphs(tokens);
 
         // Create Word document
         const doc = new Document({
+            numbering: {
+                config: [
+                    {
+                        reference: "main-numbering",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "decimal",
+                                text: "%1.",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                            {
+                                level: 1,
+                                format: "decimal",
+                                text: "%2.",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 1440, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        reference: "main-bullet-numbering",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "bullet",
+                                text: "\u25CF",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                            {
+                                level: 1,
+                                format: "bullet",
+                                text: "\u25CB",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 1440, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
             sections: [{
                 properties: {},
                 children: paragraphs
