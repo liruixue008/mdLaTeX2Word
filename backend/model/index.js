@@ -101,6 +101,7 @@ const tokensToDocxParagraphs = async (tokens) => {
     let currentParagraph = [];
     let listLevel = 0;
     let listStack = []; // Track list types: 'bullet' or 'ordered'
+    let isFirstListItemParagraph = false;
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
@@ -133,11 +134,35 @@ const tokensToDocxParagraphs = async (tokens) => {
 
             case 'paragraph_close':
                 if (currentParagraph.length > 0) {
-                    paragraphs.push(new Paragraph({
+                    const paragraphOptions = {
                         children: currentParagraph,
                         alignment: AlignmentType.LEFT,
                         spacing: { before: 120, after: 120 }
-                    }));
+                    };
+
+                    // If we are inside a list, handle numbering/indentation
+                    if (listLevel > 0) {
+                        const listType = listStack[listStack.length - 1];
+                        paragraphOptions.numbering = {
+                            reference: listType === 'ordered' ? 'main-numbering' : 'main-bullet-numbering',
+                            level: listLevel - 1,
+                        };
+
+                        // If it's not the first paragraph of a list item, we might want to just indent it
+                        // but for now, we follow the first paragraph numbering.
+                        // If it's a multi-paragraph list item, subsequent paragraphs should have numbering removed
+                        // but keep indentation. Standard docx library might auto-increment.
+                        if (!isFirstListItemParagraph) {
+                            // This is a simplified approach. 
+                            // Real Word bullet/numbering handles multi-paragraph items by omitting the bubble/number.
+                            delete paragraphOptions.numbering;
+                            paragraphOptions.indent = { left: 720 * listLevel };
+                        }
+
+                        isFirstListItemParagraph = false;
+                    }
+
+                    paragraphs.push(new Paragraph(paragraphOptions));
                     currentParagraph = [];
                 }
                 break;
@@ -160,6 +185,7 @@ const tokensToDocxParagraphs = async (tokens) => {
 
             case 'list_item_open':
                 currentParagraph = [];
+                isFirstListItemParagraph = true;
                 break;
 
             case 'list_item_close':
@@ -176,6 +202,7 @@ const tokensToDocxParagraphs = async (tokens) => {
                     }));
                     currentParagraph = [];
                 }
+                isFirstListItemParagraph = false;
                 break;
 
             case 'code_block':
