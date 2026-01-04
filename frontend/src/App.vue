@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="border-b border-dark-border bg-dark-surface/80 backdrop-blur-lg sticky top-0 z-50">
+    <header class="border-b border-theme-border bg-theme-surface/80 backdrop-blur-lg sticky top-0 z-50">
       <div class="container mx-auto px-6 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
@@ -10,15 +10,26 @@
             </svg>
             <div>
               <h1 class="text-2xl font-bold gradient-text">mdLaTeX2Word</h1>
-              <p class="text-sm text-dark-muted">Markdown + LaTeX → Word</p>
+              <p class="text-sm text-theme-muted">Markdown + LaTeX → Word</p>
             </div>
           </router-link>
           <div class="flex items-center space-x-6">
             <nav class="hidden md:flex items-center space-x-6">
-              <router-link to="/" class="text-sm font-medium hover:text-accent-primary transition-colors" :class="$route.name === 'home' ? 'text-accent-primary' : 'text-dark-muted'">Home</router-link>
-              <router-link to="/editor" class="text-sm font-medium hover:text-accent-primary transition-colors" :class="$route.name === 'editor' ? 'text-accent-primary' : 'text-dark-muted'">Online Editor</router-link>
+              <router-link to="/" class="text-sm font-medium hover:text-accent-primary transition-colors" :class="$route.name === 'home' ? 'text-accent-primary' : 'text-theme-muted'">Home</router-link>
+              <router-link to="/editor" class="text-sm font-medium hover:text-accent-primary transition-colors" :class="$route.name === 'editor' ? 'text-accent-primary' : 'text-theme-muted'">Online Editor</router-link>
             </nav>
-            <span class="text-sm text-dark-muted border-l border-dark-border pl-6">v1.1.0</span>
+            
+            <!-- Theme Toggle -->
+            <button @click="toggleTheme" class="p-2 rounded-lg hover:bg-theme-hover transition-colors text-theme-text" title="Toggle Theme">
+              <svg v-if="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14 7 7 0 000-14z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </button>
+
+            <span class="text-sm text-theme-muted border-l border-theme-border pl-6">v1.1.0</span>
           </div>
         </div>
       </div>
@@ -34,10 +45,10 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-dark-border bg-dark-surface mt-auto">
+    <footer class="border-t border-theme-border bg-theme-surface mt-auto">
       <div class="container mx-auto px-6 py-6">
-        <div class="text-center text-sm text-dark-muted">
-          <p>Built with Vue 3, Node.js, and Tailwind CSS</p>
+        <div class="text-center text-sm text-theme-muted">
+          <p>Built by Mofeiyu Tech</p>
         </div>
       </div>
     </footer>
@@ -45,8 +56,29 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+
 const $route = useRoute()
+const theme = ref(localStorage.getItem('theme') || 'dark')
+
+const toggleTheme = () => {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  updateTheme()
+}
+
+const updateTheme = () => {
+  localStorage.setItem('theme', theme.value)
+  if (theme.value === 'light') {
+    document.documentElement.classList.add('light')
+  } else {
+    document.documentElement.classList.remove('light')
+  }
+}
+
+onMounted(() => {
+  updateTheme()
+})
 </script>
 
 <style>
@@ -70,11 +102,11 @@ const $route = useRoute()
 }
 
 .btn-secondary {
-  @apply bg-dark-border text-dark-text hover:bg-dark-border/80 h-full flex items-center;
+  @apply bg-theme-border text-theme-text hover:bg-theme-border/80 h-full flex items-center;
 }
 
 .card {
-  @apply bg-dark-surface border border-dark-border rounded-2xl p-6 hover:border-accent-primary/30 transition-colors;
+  @apply bg-theme-surface border border-theme-border rounded-2xl p-6 hover:border-accent-primary/30 transition-colors;
 }
 
 .gradient-text {

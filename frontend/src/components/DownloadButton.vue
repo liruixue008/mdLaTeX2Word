@@ -9,7 +9,7 @@
         </div>
         <div>
           <h3 class="font-semibold text-accent-success mb-1">Document Ready!</h3>
-          <p class="text-sm text-dark-muted">{{ filename }}</p>
+          <p class="text-sm text-theme-muted">{{ filename }}</p>
         </div>
       </div>
 

@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center space-x-4">
-        <router-link to="/" class="text-dark-muted hover:text-dark-text transition-colors flex items-center space-x-1">
+        <router-link to="/" class="text-theme-muted hover:text-theme-text transition-colors flex items-center space-x-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
@@ -33,19 +33,19 @@
     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
       <!-- Left: Editor -->
       <div class="flex flex-col min-h-0">
-        <div class="mb-2 text-sm text-dark-muted font-medium">Markdown + LaTeX</div>
+        <div class="mb-2 text-sm text-theme-muted font-medium">Markdown + LaTeX</div>
         <textarea
           v-model="content"
           placeholder="Type your markdown here... (e.g., $E=mc^2$)"
-          class="flex-1 w-full bg-dark-surface border border-dark-border rounded-xl p-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-none font-mono"
+          class="flex-1 w-full bg-theme-surface border border-theme-border rounded-xl p-4 text-theme-text focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-none font-mono"
         ></textarea>
       </div>
 
       <!-- Right: Preview -->
       <div class="flex flex-col min-h-0">
-        <div class="mb-2 text-sm text-dark-muted font-medium">Real-time Preview</div>
+        <div class="mb-2 text-sm text-theme-muted font-medium">Real-time Preview</div>
         <div 
-          class="flex-1 bg-dark-surface border border-dark-border rounded-xl p-6 overflow-auto markdown-preview"
+          class="flex-1 bg-theme-surface border border-theme-border rounded-xl p-6 overflow-auto markdown-preview"
           v-html="renderedContent"
         ></div>
       </div>
@@ -129,7 +129,7 @@ const exportToWord = async () => {
 
 <style>
 .markdown-preview {
-  color: #e2e8f0;
+  color: var(--color-text);
 }
 .markdown-preview h1 {
   font-size: 1.875rem;
@@ -148,7 +148,7 @@ const exportToWord = async () => {
 }
 .markdown-preview strong {
   font-weight: 600;
-  color: #fff;
+  color: var(--color-text);
 }
 .markdown-preview ul, .markdown-preview ol {
   margin-left: 1.5rem;
@@ -160,7 +160,7 @@ const exportToWord = async () => {
 .katex-display {
   margin: 1.5rem 0;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-hover);
   border-radius: 0.5rem;
 }
 </style>

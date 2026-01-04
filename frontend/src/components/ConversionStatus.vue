@@ -44,12 +44,12 @@
         >
           {{ statusTitle }}
         </h3>
-        <p class="text-sm text-dark-muted">{{ message }}</p>
+        <p class="text-sm text-theme-muted">{{ message }}</p>
       </div>
     </div>
 
     <!-- Progress Bar -->
-    <div v-if="status === 'converting'" class="mt-4 w-full bg-dark-bg rounded-full h-2 overflow-hidden">
+    <div v-if="status === 'converting'" class="mt-4 w-full bg-theme-bg rounded-full h-2 overflow-hidden">
       <div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary animate-pulse-slow"></div>
     </div>
   </div>

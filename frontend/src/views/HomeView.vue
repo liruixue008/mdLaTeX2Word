@@ -5,7 +5,7 @@
       <h2 class="text-4xl font-bold mb-4">
         Convert Your <span class="gradient-text">Markdown</span> Files
       </h2>
-      <p class="text-lg text-dark-muted">
+      <p class="text-lg text-theme-muted">
         Upload Markdown files with LaTeX formulas and convert them to Word documents instantly
       </p>
       <div class="mt-6 flex justify-center">
@@ -48,7 +48,7 @@
         </svg>
         <div>
           <h3 class="font-semibold text-accent-error mb-1">Error</h3>
-          <p class="text-dark-text">{{ errorMessage }}</p>
+          <p class="text-theme-text">{{ errorMessage }}</p>
         </div>
       </div>
     </div>
@@ -62,7 +62,7 @@
           </svg>
         </div>
         <h3 class="font-semibold mb-2">Easy Upload</h3>
-        <p class="text-sm text-dark-muted">Drag & drop or click to upload your Markdown files</p>
+        <p class="text-sm text-theme-muted">Drag & drop or click to upload your Markdown files</p>
       </div>
 
       <div class="card text-center">
@@ -72,7 +72,7 @@
           </svg>
         </div>
         <h3 class="font-semibold mb-2">LaTeX Support</h3>
-        <p class="text-sm text-dark-muted">Full support for LaTeX mathematical formulas</p>
+        <p class="text-sm text-theme-muted">Full support for LaTeX mathematical formulas</p>
       </div>
 
       <div class="card text-center">
@@ -82,7 +82,7 @@
           </svg>
         </div>
         <h3 class="font-semibold mb-2">Instant Download</h3>
-        <p class="text-sm text-dark-muted">Get your Word document ready in seconds</p>
+        <p class="text-sm text-theme-muted">Get your Word document ready in seconds</p>
       </div>
     </div>
   </div>

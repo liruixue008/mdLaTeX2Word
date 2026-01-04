@@ -2,7 +2,7 @@
   <div class="card">
     <div class="text-center mb-6">
       <h3 class="text-xl font-semibold mb-2">Upload Your File</h3>
-      <p class="text-sm text-dark-muted">Supports .md, .markdown, and .tex files (max 10MB)</p>
+      <p class="text-sm text-theme-muted">Supports .md, .markdown, and .tex files (max 10MB)</p>
     </div>
 
     <!-- Drop Zone -->
@@ -15,7 +15,7 @@
         'border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-300',
         isDragging 
           ? 'border-accent-primary bg-accent-primary/10 scale-105' 
-          : 'border-dark-border hover:border-accent-primary/50 hover:bg-dark-hover'
+          : 'border-theme-border hover:border-accent-primary/50 hover:bg-theme-hover'
       ]"
     >
       <div class="flex flex-col items-center space-y-4">
@@ -23,7 +23,7 @@
         <div 
           :class="[
             'w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300',
-            isDragging ? 'bg-accent-primary text-white scale-110' : 'bg-dark-bg text-accent-primary'
+            isDragging ? 'bg-accent-primary text-white scale-110' : 'bg-theme-bg text-accent-primary'
           ]"
         >
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,11 +36,11 @@
           <p class="text-lg font-medium mb-1">
             {{ isDragging ? 'Drop your file here' : 'Drag & drop your file here' }}
           </p>
-          <p class="text-sm text-dark-muted">or click to browse</p>
+          <p class="text-sm text-theme-muted">or click to browse</p>
         </div>
 
         <!-- File Info -->
-        <div v-if="selectedFile" class="mt-4 p-4 bg-dark-bg rounded-lg w-full max-w-md">
+        <div v-if="selectedFile" class="mt-4 p-4 bg-theme-bg rounded-lg w-full max-w-md">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3 flex-1 min-w-0">
               <svg class="w-5 h-5 text-accent-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,14 +48,14 @@
               </svg>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">{{ selectedFile.name }}</p>
-                <p class="text-xs text-dark-muted">{{ formatFileSize(selectedFile.size) }}</p>
+                <p class="text-xs text-theme-muted">{{ formatFileSize(selectedFile.size) }}</p>
               </div>
             </div>
             <button
               @click.stop="clearFile"
-              class="ml-2 p-1 hover:bg-dark-hover rounded transition-colors"
+              class="ml-2 p-1 hover:bg-theme-hover rounded transition-colors"
             >
-              <svg class="w-5 h-5 text-dark-muted hover:text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-theme-muted hover:text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -92,9 +92,9 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="text-dark-muted">Uploading...</span>
+        <span class="text-theme-muted">Uploading...</span>
       </div>
-      <div class="mt-3 w-full bg-dark-bg rounded-full h-2 overflow-hidden">
+      <div class="mt-3 w-full bg-theme-bg rounded-full h-2 overflow-hidden">
         <div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary animate-pulse-slow"></div>
       </div>
     </div>

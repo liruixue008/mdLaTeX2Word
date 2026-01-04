@@ -7,13 +7,13 @@ export default {
     theme: {
         extend: {
             colors: {
-                dark: {
-                    bg: '#0a0a0a',
-                    surface: '#1a1a1a',
-                    border: '#2a2a2a',
-                    hover: '#252525',
-                    text: '#e5e5e5',
-                    muted: '#a0a0a0',
+                theme: {
+                    bg: 'rgb(var(--color-bg) / <alpha-value>)',
+                    surface: 'rgb(var(--color-surface) / <alpha-value>)',
+                    border: 'rgb(var(--color-border) / <alpha-value>)',
+                    hover: 'rgb(var(--color-hover) / <alpha-value>)',
+                    text: 'rgb(var(--color-text) / <alpha-value>)',
+                    muted: 'rgb(var(--color-muted) / <alpha-value>)',
                 },
                 accent: {
                     primary: '#3b82f6',
