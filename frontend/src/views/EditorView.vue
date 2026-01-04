@@ -145,6 +145,7 @@ const exportToWord = async () => {
 .markdown-preview p {
   margin-bottom: 1rem;
   line-height: 1.6;
+  text-align: left;
 }
 .markdown-preview strong {
   font-weight: 600;

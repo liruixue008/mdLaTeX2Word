@@ -135,6 +135,7 @@ const tokensToDocxParagraphs = async (tokens) => {
                 if (currentParagraph.length > 0) {
                     paragraphs.push(new Paragraph({
                         children: currentParagraph,
+                        alignment: AlignmentType.LEFT,
                         spacing: { before: 120, after: 120 }
                     }));
                     currentParagraph = [];
@@ -166,6 +167,7 @@ const tokensToDocxParagraphs = async (tokens) => {
                     const listType = listStack[listStack.length - 1];
                     paragraphs.push(new Paragraph({
                         children: currentParagraph,
+                        alignment: AlignmentType.LEFT,
                         numbering: {
                             reference: listType === 'ordered' ? 'main-numbering' : 'main-bullet-numbering',
                             level: listLevel - 1,
