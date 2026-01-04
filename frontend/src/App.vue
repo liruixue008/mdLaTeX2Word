@@ -5,11 +5,9 @@
       <div class="container mx-auto px-6 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-            <svg class="w-10 h-10 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <img src="./assets/styles/logo.png" alt="Logo" class="w-10 h-10 object-contain" />
             <div>
-              <h1 class="text-2xl font-bold gradient-text">mdLaTeX2Word</h1>
+              <h1 class="text-2xl font-bold gradient-text">MD LaTex在线</h1>
               <p class="text-sm text-theme-muted">Markdown + LaTeX → Word</p>
             </div>
           </router-link>
