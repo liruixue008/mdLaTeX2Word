@@ -14,9 +14,12 @@
 
 **前端 (Frontend)**
 - Vue 3 - 前端框架
+- Vue Router 4 - 路由管理
 - Vite - 构建工具
 - Tailwind CSS - 样式框架（深色主题）
 - Axios - HTTP 客户端
+- Markdown-it + markdown-it-texmath - 实时预览解析
+- KaTeX - 实时预览公式渲染
 
 ## 项目结构
 
@@ -45,6 +48,11 @@ mdLaTeX2Word
 │   │   │   ├── FileUpload.vue        # 文件上传组件
 │   │   │   ├── ConversionStatus.vue  # 转换状态组件
 │   │   │   └── DownloadButton.vue    # 下载按钮组件
+│   │   ├── router/          # 路由配置
+│   │   │   └── index.js
+│   │   ├── views/           # 页面视图
+│   │   │   ├── HomeView.vue          # 首页
+│   │   │   └── EditorView.vue        # 在线模拟编辑器
 │   │   ├── App.vue          # 主应用组件
 │   │   └── main.js          # 应用入口
 │   ├── index.html           # HTML 模板
@@ -85,10 +93,10 @@ npm run dev
 ### 3. 使用应用
 
 1. 打开浏览器访问 `http://localhost:5173`
-2. 拖拽或点击上传 Markdown 文件（支持 .md, .markdown, .tex）
-3. 点击"Upload & Convert"按钮
-4. 等待转换完成
-5. 点击"Download"按钮下载 Word 文档
+2. **选择功能**：
+   - **离线转换**：点击首页的上传区域，拖拽或上传 Markdown 文件（支持 .md, .markdown, .tex），点击 "Upload & Convert"。
+   - **在线编辑**：点击首页的 "Try Online Editor" 或导航栏中的 "Online Editor"，进入实时预览编辑器。
+3. **导出文件**：在编辑器中完成编辑后，点击右上角的 "Export to Word" 按钮即可下载生成的 .docx 文件。
 
 ## API 文档
 
@@ -141,6 +149,28 @@ GET /api/download/:filename
 响应: Word 文档文件流
 ```
 
+### 直接内容转换
+```
+POST /api/convert-content
+Content-Type: application/json
+
+参数:
+{
+  "content": "# Markdown Content",
+  "filename": "output.docx"
+}
+
+响应:
+{
+  "success": true,
+  "message": "Content converted successfully",
+  "data": {
+    "outputFilename": "output_1234567890.docx",
+    "downloadUrl": "/api/download/output_1234567890.docx"
+  }
+}
+```
+
 ### 健康检查
 ```
 GET /api/health
@@ -157,6 +187,8 @@ GET /api/health
 
 - ✅ 支持 Markdown 文件上传（.md, .markdown, .tex）
 - ✅ 支持 LaTeX 数学公式（行内公式 `$...$` 和块级公式 `$$...$$`）
+- ✅ **在线实时预览编辑器**（左右分栏，实时渲染）
+- ✅ **在线编辑内容直接导出为 Word**
 - ✅ 拖拽上传文件
 - ✅ 实时转换状态显示
 - ✅ 自动文件清理（1小时后删除临时文件）

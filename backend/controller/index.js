@@ -169,9 +169,52 @@ const healthCheck = (req, res) => {
     });
 };
 
+/**
+ * Handle direct markdown content conversion
+ */
+const convertContent = async (req, res) => {
+    try {
+        const { content, filename } = req.body;
+
+        if (!content) {
+            logger.warn('Content conversion attempt with no content');
+            return res.status(400).json({
+                success: false,
+                message: 'Content is required'
+            });
+        }
+
+        const baseName = filename ? path.basename(filename, path.extname(filename)) : 'converted';
+        const outputFilename = generateUniqueFilename(baseName + '.docx');
+        const outputPath = path.join(config.outputDir, outputFilename);
+
+        const { convertMarkdownContentToWord } = require('../model');
+        await convertMarkdownContentToWord(content, outputPath);
+
+        logger.info(`Content conversion completed: ${outputFilename}`);
+
+        res.json({
+            success: true,
+            message: 'Content converted successfully',
+            data: {
+                outputFilename: outputFilename,
+                downloadUrl: `/api/download/${outputFilename}`
+            }
+        });
+    } catch (error) {
+        logger.error('Error in convertContent:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to convert content',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     uploadFile,
     convertFile,
     downloadFile,
+    convertContent,
     healthCheck
 };

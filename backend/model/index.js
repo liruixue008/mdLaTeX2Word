@@ -240,7 +240,44 @@ const convertMarkdownToWord = async (inputPath, outputPath) => {
     }
 };
 
+/**
+ * Convert Markdown content to Word document
+ */
+const convertMarkdownContentToWord = async (content, outputPath) => {
+    logger.info(`Converting Markdown content to Word: ${outputPath}`);
+
+    try {
+        // Parse markdown
+        const tokens = parseMarkdown(content);
+
+        // Convert to Word paragraphs
+        const paragraphs = tokensToDocxParagraphs(tokens);
+
+        // Create Word document
+        const doc = new Document({
+            sections: [{
+                properties: {},
+                children: paragraphs
+            }]
+        });
+
+        // Generate buffer
+        const Packer = require('docx').Packer;
+        const buffer = await Packer.toBuffer(doc);
+
+        // Write to file
+        fs.writeFileSync(outputPath, buffer);
+        logger.info(`Successfully created Word document from content: ${outputPath}`);
+
+        return outputPath;
+    } catch (error) {
+        logger.error('Error converting Markdown content to Word:', error);
+        throw new Error(`Conversion failed: ${error.message}`);
+    }
+};
+
 module.exports = {
     parseMarkdown,
-    convertMarkdownToWord
+    convertMarkdownToWord,
+    convertMarkdownContentToWord
 };

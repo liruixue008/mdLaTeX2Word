@@ -39,6 +39,7 @@ const upload = multer({
 // Routes
 router.post('/upload', upload.single('file'), controller.uploadFile);
 router.post('/convert', controller.convertFile);
+router.post('/convert-content', controller.convertContent);
 router.get('/download/:filename', controller.downloadFile);
 router.get('/health', controller.healthCheck);
 
