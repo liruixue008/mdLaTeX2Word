@@ -10,7 +10,8 @@ const { logger } = require('../utils');
 const md = new MarkdownIt({
     html: true,
     linkify: true,
-    typographer: true
+    typographer: true,
+    breaks: true
 }).use(tm, {
     engine: katex,
     delimiters: 'dollars',
@@ -119,6 +120,16 @@ const tokensToDocxParagraphs = (tokens) => {
                     spacing: { before: 120, after: 120 }
                 }));
                 break;
+
+            case 'math_block':
+                paragraphs.push(new Paragraph({
+                    children: [new Math({
+                        children: [new TextRun(token.content)]
+                    })],
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 240, after: 240 }
+                }));
+                break;
         }
     }
 
@@ -180,15 +191,24 @@ const parseInlineContent = (content, children) => {
                 // Links will be handled by their text content
                 break;
 
+            case 'softbreak':
+            case 'hardbreak':
+                textRuns.push(new TextRun({ break: 1 }));
+                break;
+
+            case 'math_inline':
+                textRuns.push(new Math({
+                    children: [new TextRun(child.content)]
+                }));
+                break;
+
             default:
-                // Handle LaTeX formulas and other content
+                // Handle LaTeX formulas and other content (fallback)
                 if (child.content) {
-                    // Check if it's a LaTeX formula (contains $ or $$)
+                    // Check if it's a LaTeX formula (contains $ or $$) - though markdown-it-texmath should have caught it
                     if (child.content.includes('$')) {
-                        // For now, render LaTeX as text (Word's MathML support is complex)
-                        textRuns.push(new TextRun({
-                            text: child.content,
-                            italics: true
+                        textRuns.push(new Math({
+                            children: [new TextRun(child.content.replace(/\$/g, ''))]
                         }));
                     } else {
                         textRuns.push(new TextRun(child.content));

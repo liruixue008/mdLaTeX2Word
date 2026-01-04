@@ -78,7 +78,8 @@ const downloadLink = ref(null)
 const md = new MarkdownIt({
   html: true,
   linkify: true,
-  typographer: true
+  typographer: true,
+  breaks: true
 }).use(tm, {
   engine: katex,
   delimiters: 'dollars',
