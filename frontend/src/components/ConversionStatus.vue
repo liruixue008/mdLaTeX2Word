@@ -57,6 +57,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   status: {
@@ -70,14 +71,16 @@ const props = defineProps({
   }
 })
 
+const { t } = useI18n()
+
 const statusTitle = computed(() => {
   switch (props.status) {
     case 'converting':
-      return 'Converting...'
+      return t('status.converting')
     case 'success':
-      return 'Success!'
+      return t('status.success')
     case 'error':
-      return 'Failed'
+      return t('status.error')
     default:
       return ''
   }

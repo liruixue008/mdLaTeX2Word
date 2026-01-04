@@ -7,9 +7,9 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          <span>Back</span>
+          <span>{{ $t('editor.back') }}</span>
         </router-link>
-        <h2 class="text-xl font-bold">Online Editor</h2>
+        <h2 class="text-xl font-bold">{{ $t('editor.title') }}</h2>
       </div>
       <div class="flex items-center space-x-3">
         <button 
@@ -24,7 +24,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span>{{ isExporting ? 'Exporting...' : 'Export to Word' }}</span>
+          <span>{{ isExporting ? $t('editor.exportingBtn') : $t('editor.exportBtn') }}</span>
         </button>
       </div>
     </div>
@@ -33,17 +33,17 @@
     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
       <!-- Left: Editor -->
       <div class="flex flex-col min-h-0">
-        <div class="mb-2 text-sm text-theme-muted font-medium">Markdown + LaTeX</div>
+        <div class="mb-2 text-sm text-theme-muted font-medium">{{ $t('editor.markdownLabel') }}</div>
         <textarea
           v-model="content"
-          placeholder="Type your markdown here... (e.g., $E=mc^2$)"
+          :placeholder="$t('editor.placeholder')"
           class="flex-1 w-full bg-theme-surface border border-theme-border rounded-xl p-4 text-theme-text focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-none font-mono"
         ></textarea>
       </div>
 
       <!-- Right: Preview -->
       <div class="flex flex-col min-h-0">
-        <div class="mb-2 text-sm text-theme-muted font-medium">Real-time Preview</div>
+        <div class="mb-2 text-sm text-theme-muted font-medium">{{ $t('editor.previewLabel') }}</div>
         <div 
           class="flex-1 bg-theme-surface border border-theme-border rounded-xl p-6 overflow-auto markdown-preview"
           v-html="renderedContent"
@@ -62,14 +62,21 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MarkdownIt from 'markdown-it'
 import tm from 'markdown-it-texmath'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import axios from 'axios'
 
-const content = ref('# Welcome to mdLaTeX2Word\n\nYou can type **Markdown** here and include *LaTeX* formulas like this:\n\nThe quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.\n\nOr block formulas:\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\nFeel free to experiment!')
+const { t } = useI18n()
+
+const content = ref('')
+
+onMounted(() => {
+  content.value = t('editor.defaultContent')
+})
 
 const isExporting = ref(false)
 const errorMessage = ref('')
