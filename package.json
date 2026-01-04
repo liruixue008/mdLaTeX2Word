@@ -1,0 +1,19 @@
+{
+    "name": "mdlatex2word",
+    "version": "1.0.0",
+    "description": "Convert Markdown files with LaTeX formulas to Word documents",
+    "scripts": {
+        "dev": "cd frontend && npm run dev",
+        "server": "cd backend && npm start",
+        "build": "cd frontend && npm run build",
+        "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    },
+    "keywords": [
+        "markdown",
+        "latex",
+        "word",
+        "converter"
+    ],
+    "author": "",
+    "license": "MIT"
+}
