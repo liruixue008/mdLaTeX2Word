@@ -35,7 +35,6 @@ const messages = {
             markdownLabel: 'Markdown + LaTeX',
             placeholder: 'Type your markdown here... (e.g., $E=mc^2$)',
             previewLabel: 'Real-time Preview',
-            defaultContent: '# Welcome to mdLaTeX2Word\n\nYou can type **Markdown** here and include *LaTeX* formulas like this:\n\nThe quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.\n\nOr block formulas:\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\nFeel free to experiment!'
         },
         upload: {
             title: 'Upload Your File',
@@ -96,7 +95,6 @@ const messages = {
             markdownLabel: 'Markdown + LaTeX',
             placeholder: '在此输入 Markdown 内容... (例如: $E=mc^2$)',
             previewLabel: '实时预览',
-            defaultContent: '# 欢迎使用 mdLaTeX2Word\n\n您可以直接在此输入 **Markdown** 内容，并包含 *LaTeX* 公式，例如：\n\n二次方程求根公式：$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$。\n\n或者块级公式：\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\n尽情尝试吧！'
         },
         upload: {
             title: '上传文件',
@@ -120,7 +118,7 @@ const messages = {
             btn: '下载'
         },
         footer: {
-            builtBy: '由 墨飞鱼科技 构建'
+            builtBy: '墨飞鱼科技版权所有 - 粤ICP备2021051584号'
         }
     }
 }

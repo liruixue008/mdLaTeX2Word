@@ -75,7 +75,8 @@ const { t } = useI18n()
 const content = ref('')
 
 onMounted(() => {
-  content.value = t('editor.defaultContent')
+  content.value = '# Welcome to mdLaTeX2Word\n\nYou can type **Markdown** here and include *LaTeX* formulas like this:\n\nThe quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.\n\nOr block formulas:\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\nFeel free to experiment!'
+ //# 欢迎使用 mdLaTeX2Word\n\n您可以直接在此输入 **Markdown** 内容，并包含 *LaTeX* 公式，例如：\n\n二次方程求根公式：$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$。\n\n或者块级公式：\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\n尽情尝试吧！
 })
 
 const isExporting = ref(false)
