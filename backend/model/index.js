@@ -94,14 +94,16 @@ const parseMarkdown = (content) => {
 };
 
 /**
- * Convert Markdown tokens to Word document paragraphs
+ * Convert Markdown tokens to Word document paragraphs and numbering configuration
  */
 const tokensToDocxParagraphs = async (tokens) => {
     const paragraphs = [];
+    const numberingConfigs = [];
     let currentParagraph = [];
     let listLevel = 0;
-    let listStack = []; // Track list types: 'bullet' or 'ordered'
+    let listStack = []; // Track objects: { type: 'bullet'|'ordered', reference: string }
     let isFirstListItemParagraph = false;
+    let listCounter = 0;
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
@@ -142,19 +144,13 @@ const tokensToDocxParagraphs = async (tokens) => {
 
                     // If we are inside a list, handle numbering/indentation
                     if (listLevel > 0) {
-                        const listType = listStack[listStack.length - 1];
+                        const listInfo = listStack[listStack.length - 1];
                         paragraphOptions.numbering = {
-                            reference: listType === 'ordered' ? 'main-numbering' : 'main-bullet-numbering',
+                            reference: listInfo.reference,
                             level: listLevel - 1,
                         };
 
-                        // If it's not the first paragraph of a list item, we might want to just indent it
-                        // but for now, we follow the first paragraph numbering.
-                        // If it's a multi-paragraph list item, subsequent paragraphs should have numbering removed
-                        // but keep indentation. Standard docx library might auto-increment.
                         if (!isFirstListItemParagraph) {
-                            // This is a simplified approach. 
-                            // Real Word bullet/numbering handles multi-paragraph items by omitting the bubble/number.
                             delete paragraphOptions.numbering;
                             paragraphOptions.indent = { left: 720 * listLevel };
                         }
@@ -168,13 +164,57 @@ const tokensToDocxParagraphs = async (tokens) => {
                 break;
 
             case 'bullet_list_open':
-                listLevel++;
-                listStack.push('bullet');
-                break;
-
             case 'ordered_list_open':
                 listLevel++;
-                listStack.push('ordered');
+                listCounter++;
+                const isOrdered = token.type === 'ordered_list_open';
+                const startAttr = token.attrGet('start');
+                const startValue = startAttr ? parseInt(startAttr) : 1;
+                const reference = `list-${listCounter}`;
+
+                // Create a numbering configuration for this list
+                const config = {
+                    reference: reference,
+                    levels: [
+                        {
+                            level: 0,
+                            format: isOrdered ? "decimal" : "bullet",
+                            text: isOrdered ? "%1." : "\u25CF",
+                            alignment: AlignmentType.START,
+                            start: isOrdered ? startValue : undefined,
+                            style: {
+                                paragraph: {
+                                    indent: { left: 720, hanging: 360 },
+                                },
+                            },
+                        },
+                        {
+                            level: 1,
+                            format: isOrdered ? "decimal" : "bullet",
+                            text: isOrdered ? "%2." : "\u25CB",
+                            alignment: AlignmentType.START,
+                            style: {
+                                paragraph: {
+                                    indent: { left: 1440, hanging: 360 },
+                                },
+                            },
+                        },
+                        {
+                            level: 2,
+                            format: isOrdered ? "decimal" : "bullet",
+                            text: isOrdered ? "%3." : "\u25A0",
+                            alignment: AlignmentType.START,
+                            style: {
+                                paragraph: {
+                                    indent: { left: 2160, hanging: 360 },
+                                },
+                            },
+                        }
+                    ],
+                };
+
+                numberingConfigs.push(config);
+                listStack.push({ type: isOrdered ? 'ordered' : 'bullet', reference: reference });
                 break;
 
             case 'bullet_list_close':
@@ -190,12 +230,12 @@ const tokensToDocxParagraphs = async (tokens) => {
 
             case 'list_item_close':
                 if (currentParagraph.length > 0) {
-                    const listType = listStack[listStack.length - 1];
+                    const listInfo = listStack[listStack.length - 1];
                     paragraphs.push(new Paragraph({
                         children: currentParagraph,
                         alignment: AlignmentType.LEFT,
                         numbering: {
-                            reference: listType === 'ordered' ? 'main-numbering' : 'main-bullet-numbering',
+                            reference: listInfo.reference,
                             level: listLevel - 1,
                         },
                         spacing: { before: 120, after: 120 }
@@ -236,8 +276,8 @@ const tokensToDocxParagraphs = async (tokens) => {
         }
     }
 
-    logger.info(`Converted tokens to ${paragraphs.length} paragraphs`);
-    return paragraphs;
+    logger.info(`Converted tokens to ${paragraphs.length} paragraphs and ${numberingConfigs.length} numbering configs`);
+    return { paragraphs, numberingConfigs };
 };
 
 /**
@@ -337,67 +377,12 @@ const convertMarkdownToWord = async (inputPath, outputPath) => {
         const tokens = parseMarkdown(markdownContent);
 
         // Convert to Word paragraphs
-        const paragraphs = await tokensToDocxParagraphs(tokens);
+        const { paragraphs, numberingConfigs } = await tokensToDocxParagraphs(tokens);
 
         // Create Word document
         const doc = new Document({
             numbering: {
-                config: [
-                    {
-                        reference: "main-numbering",
-                        levels: [
-                            {
-                                level: 0,
-                                format: "decimal",
-                                text: "%1.",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 },
-                                    },
-                                },
-                            },
-                            {
-                                level: 1,
-                                format: "decimal",
-                                text: "%2.",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 1440, hanging: 360 },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                    {
-                        reference: "main-bullet-numbering",
-                        levels: [
-                            {
-                                level: 0,
-                                format: "bullet",
-                                text: "\u25CF",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 },
-                                    },
-                                },
-                            },
-                            {
-                                level: 1,
-                                format: "bullet",
-                                text: "\u25CB",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 1440, hanging: 360 },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
+                config: numberingConfigs,
             },
             sections: [{
                 properties: {},
@@ -431,67 +416,12 @@ const convertMarkdownContentToWord = async (content, outputPath) => {
         const tokens = parseMarkdown(content);
 
         // Convert to Word paragraphs
-        const paragraphs = await tokensToDocxParagraphs(tokens);
+        const { paragraphs, numberingConfigs } = await tokensToDocxParagraphs(tokens);
 
         // Create Word document
         const doc = new Document({
             numbering: {
-                config: [
-                    {
-                        reference: "main-numbering",
-                        levels: [
-                            {
-                                level: 0,
-                                format: "decimal",
-                                text: "%1.",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 },
-                                    },
-                                },
-                            },
-                            {
-                                level: 1,
-                                format: "decimal",
-                                text: "%2.",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 1440, hanging: 360 },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                    {
-                        reference: "main-bullet-numbering",
-                        levels: [
-                            {
-                                level: 0,
-                                format: "bullet",
-                                text: "\u25CF",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 },
-                                    },
-                                },
-                            },
-                            {
-                                level: 1,
-                                format: "bullet",
-                                text: "\u25CB",
-                                alignment: AlignmentType.START,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 1440, hanging: 360 },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
+                config: numberingConfigs,
             },
             sections: [{
                 properties: {},
