@@ -6,9 +6,12 @@
         <div class="flex items-center justify-between">
           <router-link to="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
             <img src="./assets/styles/logo.png" alt="Logo" class="w-10 h-10 object-contain" />
-            <div>
-              <h1 class="text-2xl font-bold gradient-text">{{ $t('app.title') }}</h1>
-              <p class="text-sm text-theme-muted">{{ $t('app.subtitle') }}</p>
+            <div class="flex flex-col">
+              <h1 class="text-2xl font-bold gradient-text">
+                <span class="hidden md:inline">{{ $t('app.title') }}</span>
+                <span class="inline md:hidden">MD LaTex</span>
+              </h1>
+              <p class="text-sm text-theme-muted hidden md:block">{{ $t('app.subtitle') }}</p>
             </div>
           </router-link>
           <div class="flex items-center space-x-6">

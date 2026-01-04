@@ -9,7 +9,7 @@
           </svg>
           <span>{{ $t('editor.back') }}</span>
         </router-link>
-        <h2 class="text-xl font-bold">{{ $t('editor.title') }}</h2>
+        <h2 class="text-xl font-bold hidden sm:block">{{ $t('editor.title') }}</h2>
       </div>
       <div class="flex items-center space-x-3">
         <button 
