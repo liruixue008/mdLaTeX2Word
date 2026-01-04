@@ -49,7 +49,7 @@
               </svg>
             </button>
 
-            <span class="text-sm text-theme-muted border-l border-theme-border pl-6">{{ $t('app.version') }}</span>
+            <!-- <span class="text-sm text-theme-muted border-l border-theme-border pl-6">{{ $t('app.version') }}</span> -->
           </div>
         </div>
       </div>
