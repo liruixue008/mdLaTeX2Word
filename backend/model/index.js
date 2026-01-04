@@ -3,7 +3,7 @@ const path = require('path');
 const MarkdownIt = require('markdown-it');
 const tm = require('markdown-it-texmath');
 const katex = require('katex');
-const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel, Math } = require('docx');
+const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel, Math, Numbering } = require('docx');
 const { logger } = require('../utils');
 
 // Initialize markdown-it with LaTeX support
@@ -47,6 +47,7 @@ const tokensToDocxParagraphs = (tokens) => {
     const paragraphs = [];
     let currentParagraph = [];
     let listLevel = 0;
+    let listStack = []; // Track list types: 'bullet' or 'ordered'
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
@@ -88,17 +89,38 @@ const tokensToDocxParagraphs = (tokens) => {
                 break;
 
             case 'bullet_list_open':
+                listLevel++;
+                listStack.push('bullet');
+                break;
+
             case 'ordered_list_open':
                 listLevel++;
+                listStack.push('ordered');
                 break;
 
             case 'bullet_list_close':
             case 'ordered_list_close':
                 listLevel--;
+                listStack.pop();
                 break;
 
             case 'list_item_open':
-                // List items will be handled by their inline content
+                currentParagraph = [];
+                break;
+
+            case 'list_item_close':
+                if (currentParagraph.length > 0) {
+                    const listType = listStack[listStack.length - 1];
+                    paragraphs.push(new Paragraph({
+                        children: currentParagraph,
+                        numbering: {
+                            reference: listType === 'ordered' ? 'main-numbering' : 'main-bullet-numbering',
+                            level: listLevel - 1,
+                        },
+                        spacing: { before: 120, after: 120 }
+                    }));
+                    currentParagraph = [];
+                }
                 break;
 
             case 'code_block':
@@ -239,6 +261,64 @@ const convertMarkdownToWord = async (inputPath, outputPath) => {
 
         // Create Word document
         const doc = new Document({
+            numbering: {
+                config: [
+                    {
+                        reference: "main-numbering",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "decimal",
+                                text: "%1.",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                            {
+                                level: 1,
+                                format: "decimal",
+                                text: "%2.",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 1440, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        reference: "main-bullet-numbering",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "bullet",
+                                text: "\u25CF",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                            {
+                                level: 1,
+                                format: "bullet",
+                                text: "\u25CB",
+                                alignment: AlignmentType.START,
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 1440, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
             sections: [{
                 properties: {},
                 children: paragraphs

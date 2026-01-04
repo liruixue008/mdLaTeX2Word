@@ -150,12 +150,19 @@ const exportToWord = async () => {
   font-weight: 600;
   color: var(--color-text);
 }
-.markdown-preview ul, .markdown-preview ol {
+.markdown-preview ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+.markdown-preview ol {
+  list-style-type: decimal;
   margin-left: 1.5rem;
   margin-bottom: 1rem;
 }
 .markdown-preview li {
   margin-bottom: 0.25rem;
+  display: list-item;
 }
 .katex-display {
   margin: 1.5rem 0;
