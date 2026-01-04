@@ -95,8 +95,7 @@ const messages = {
             exportingBtn: '正在导出...',
             markdownLabel: 'Markdown + LaTeX',
             placeholder: '在此输入 Markdown 内容... (例如: $E=mc^2$)',
-            previewLabel: '实时预览',
-            defaultContent: '# 欢迎使用 mdLaTeX2Word\n\n您可以直接在此输入 **Markdown** 内容，并包含 *LaTeX* 公式，例如：\n\n二次方程求根公式：$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$。\n\n或者块级公式：\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\n尽情尝试吧！'
+            previewLabel: '实时预览', 
         },
         upload: {
             title: '上传文件',
@@ -120,7 +119,7 @@ const messages = {
             btn: '下载'
         },
         footer: {
-            builtBy: '由 墨飞鱼科技 构建'
+            builtBy: '墨飞鱼科技   |  粤ICP备2021051584号 '
         }
     }
 }
