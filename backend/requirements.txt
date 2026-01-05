@@ -1,0 +1,27 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# CORS
+python-cors==1.0.0
+
+# Document Generation
+python-docx==1.1.0
+
+# Markdown Parsing
+markdown-it-py==3.0.0
+mdit-py-plugins==0.4.0
+
+# LaTeX and Math
+latex2mathml==3.77.0
+lxml==5.1.0
+
+# Scheduling
+APScheduler==3.10.4
+
+# Logging (using built-in logging, but adding loguru as optional enhancement)
+loguru==0.7.2
+
+# Utilities
+python-dateutil==2.8.2

@@ -1,0 +1,408 @@
+"""
+Markdown to DOCX converter with LaTeX formula support
+"""
+from pathlib import Path
+from typing import List, Dict, Any, Tuple, Optional
+import re
+from io import BytesIO
+
+from docx import Document
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from markdown_it import MarkdownIt
+from mdit_py_plugins.texmath import texmath_plugin
+from latex2mathml.converter import convert as latex_to_mathml
+from lxml import etree
+
+from utils import log
+
+
+class AnyXmlElement:
+    """Helper class to create arbitrary XML elements for OMML"""
+    
+    def __init__(self, tag: str, text: Optional[str] = None, **attrs):
+        self.tag = tag
+        self.text = text
+        self.attrs = attrs
+        self.children = []
+    
+    def add_child(self, child):
+        self.children.append(child)
+        return self
+    
+    def to_element(self) -> OxmlElement:
+        """Convert to docx OxmlElement"""
+        elem = OxmlElement(self.tag)
+        
+        for key, value in self.attrs.items():
+            elem.set(qn(key), str(value))
+        
+        if self.text:
+            elem.text = self.text
+        
+        for child in self.children:
+            if isinstance(child, AnyXmlElement):
+                elem.append(child.to_element())
+            elif isinstance(child, OxmlElement):
+                elem.append(child)
+        
+        return elem
+
+
+def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
+    """
+    Convert MathML to Office Math Markup Language (OMML)
+    This is a simplified conversion - may need enhancement for complex formulas
+    """
+    try:
+        # Parse MathML
+        mathml = etree.fromstring(mathml_str.encode('utf-8'))
+        
+        # Create OMML root element
+        omml = OxmlElement('m:oMath')
+        omml.set(qn('xmlns:m'), 'http://schemas.openxmlformats.org/officeDocument/2006/math')
+        
+        def convert_element(elem, parent_omml):
+            """Recursively convert MathML elements to OMML"""
+            tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            
+            if tag == 'mn' or tag == 'mi' or tag == 'mo':
+                # Number, identifier, or operator
+                r = OxmlElement('m:r')
+                t = OxmlElement('m:t')
+                t.text = elem.text or ''
+                r.append(t)
+                parent_omml.append(r)
+            
+            elif tag == 'mfrac':
+                # Fraction
+                frac = OxmlElement('m:f')
+                num = OxmlElement('m:num')
+                den = OxmlElement('m:den')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], num)
+                    convert_element(children[1], den)
+                
+                frac.append(num)
+                frac.append(den)
+                parent_omml.append(frac)
+            
+            elif tag == 'msup':
+                # Superscript
+                sup = OxmlElement('m:sSup')
+                base = OxmlElement('m:e')
+                supElem = OxmlElement('m:sup')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], base)
+                    convert_element(children[1], supElem)
+                
+                sup.append(base)
+                sup.append(supElem)
+                parent_omml.append(sup)
+            
+            elif tag == 'msub':
+                # Subscript
+                sub = OxmlElement('m:sSub')
+                base = OxmlElement('m:e')
+                subElem = OxmlElement('m:sub')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], base)
+                    convert_element(children[1], subElem)
+                
+                sub.append(base)
+                sub.append(subElem)
+                parent_omml.append(sub)
+            
+            elif tag == 'msqrt':
+                # Square root
+                rad = OxmlElement('m:rad')
+                radPr = OxmlElement('m:radPr')
+                degHide = OxmlElement('m:degHide')
+                degHide.set(qn('m:val'), '1')
+                radPr.append(degHide)
+                
+                base = OxmlElement('m:e')
+                for child in elem:
+                    convert_element(child, base)
+                
+                rad.append(radPr)
+                rad.append(base)
+                parent_omml.append(rad)
+            
+            elif tag == 'mrow' or tag == 'math':
+                # Row or root - process children
+                for child in elem:
+                    convert_element(child, parent_omml)
+            
+            else:
+                # Default: process children
+                for child in elem:
+                    convert_element(child, parent_omml)
+        
+        # Convert the MathML tree
+        convert_element(mathml, omml)
+        
+        return omml
+    
+    except Exception as e:
+        log.error(f"Error converting MathML to OMML: {e}")
+        return None
+
+
+def convert_latex_to_omml(latex: str, is_block: bool = False) -> Optional[OxmlElement]:
+    """Convert LaTeX formula to OMML for Word"""
+    try:
+        # Convert LaTeX to MathML
+        mathml = latex_to_mathml(latex)
+        
+        # Convert MathML to OMML
+        omml = mathml_to_omml(mathml)
+        
+        return omml
+    
+    except Exception as e:
+        log.error(f"Error converting LaTeX to OMML: {e}")
+        return None
+
+
+def parse_markdown(content: str) -> List[Dict[str, Any]]:
+    """Parse markdown content to tokens"""
+    log.info("Parsing Markdown content")
+    
+    try:
+        # Initialize markdown-it with LaTeX support
+        md = (
+            MarkdownIt('commonmark', {'breaks': True, 'html': True})
+            .use(texmath_plugin, delimiters='dollars')
+            .enable('table')
+        )
+        
+        # Parse to tokens
+        tokens = md.parse(content)
+        
+        log.info(f"Parsed {len(tokens)} tokens from Markdown")
+        return tokens
+    
+    except Exception as e:
+        log.error(f"Error parsing Markdown: {e}")
+        raise Exception(f"Failed to parse Markdown: {e}")
+
+
+def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tuple[List, List]:
+    """Convert markdown tokens to Word document paragraphs"""
+    paragraphs = []
+    numbering_configs = []
+    list_level = 0
+    list_stack = []
+    list_counter = 0
+    
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        token_type = token.type
+        
+        if token_type == 'heading_open':
+            level = int(token.tag[1])  # h1 -> 1, h2 -> 2, etc.
+            
+            # Get the inline content
+            if i + 1 < len(tokens) and tokens[i + 1].type == 'inline':
+                heading_text = tokens[i + 1].content
+                
+                para = doc.add_paragraph(heading_text)
+                para.style = f'Heading {level}'
+                paragraphs.append(para)
+            
+            i += 2  # Skip inline and heading_close
+            continue
+        
+        elif token_type == 'paragraph_open':
+            if i + 1 < len(tokens) and tokens[i + 1].type == 'inline':
+                inline_token = tokens[i + 1]
+                
+                para = doc.add_paragraph()
+                parse_inline_content(para, inline_token)
+                paragraphs.append(para)
+            
+            i += 2  # Skip inline and paragraph_close
+            continue
+        
+        elif token_type == 'bullet_list_open' or token_type == 'ordered_list_open':
+            list_level += 1
+            list_counter += 1
+            is_ordered = token_type == 'ordered_list_open'
+            
+            list_stack.append({
+                'type': 'ordered' if is_ordered else 'bullet',
+                'level': list_level
+            })
+        
+        elif token_type == 'bullet_list_close' or token_type == 'ordered_list_close':
+            list_level -= 1
+            if list_stack:
+                list_stack.pop()
+        
+        elif token_type == 'list_item_open':
+            # Process list item content
+            i += 1
+            if i < len(tokens) and tokens[i].type == 'paragraph_open':
+                i += 1
+                if i < len(tokens) and tokens[i].type == 'inline':
+                    inline_token = tokens[i]
+                    
+                    para = doc.add_paragraph()
+                    parse_inline_content(para, inline_token)
+                    
+                    # Set list style
+                    if list_stack:
+                        list_info = list_stack[-1]
+                        if list_info['type'] == 'ordered':
+                            para.style = 'List Number'
+                        else:
+                            para.style = 'List Bullet'
+                    
+                    paragraphs.append(para)
+            
+            continue
+        
+        elif token_type == 'fence' or token_type == 'code_block':
+            para = doc.add_paragraph(token.content)
+            para.style = 'No Spacing'
+            
+            for run in para.runs:
+                run.font.name = 'Courier New'
+                run.font.size = Pt(10)
+            
+            paragraphs.append(para)
+        
+        elif token_type == 'hr':
+            para = doc.add_paragraph('─' * 50)
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraphs.append(para)
+        
+        elif token_type == 'math_block' or token_type == 'math_block_end':
+            if hasattr(token, 'content') and token.content:
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Try to add OMML math
+                omml = convert_latex_to_omml(token.content, is_block=True)
+                if omml:
+                    para._element.append(omml)
+                else:
+                    # Fallback to plain text
+                    para.add_run(token.content)
+                
+                paragraphs.append(para)
+        
+        i += 1
+    
+    log.info(f"Converted tokens to {len(paragraphs)} paragraphs")
+    return paragraphs, numbering_configs
+
+
+def parse_inline_content(paragraph, inline_token) -> None:
+    """Parse inline content and add runs to paragraph"""
+    if not hasattr(inline_token, 'children') or not inline_token.children:
+        if hasattr(inline_token, 'content') and inline_token.content:
+            paragraph.add_run(inline_token.content)
+        return
+    
+    for child in inline_token.children:
+        child_type = child.type
+        
+        if child_type == 'text':
+            paragraph.add_run(child.content)
+        
+        elif child_type == 'strong':
+            run = paragraph.add_run(child.content)
+            run.bold = True
+        
+        elif child_type == 'em':
+            run = paragraph.add_run(child.content)
+            run.italic = True
+        
+        elif child_type == 'code_inline':
+            run = paragraph.add_run(child.content)
+            run.font.name = 'Courier New'
+            run.font.size = Pt(10)
+        
+        elif child_type == 'softbreak' or child_type == 'hardbreak':
+            paragraph.add_run('\n')
+        
+        elif child_type == 'math_inline':
+            # Try to add inline math
+            omml = convert_latex_to_omml(child.content, is_block=False)
+            if omml:
+                paragraph._element.append(omml)
+            else:
+                # Fallback to plain text
+                paragraph.add_run(f"${child.content}$")
+        
+        else:
+            # Default: add as text if has content
+            if hasattr(child, 'content') and child.content:
+                paragraph.add_run(child.content)
+
+
+def convert_markdown_to_word(input_path: str, output_path: str) -> str:
+    """Convert Markdown file to Word document"""
+    log.info(f"Converting Markdown to Word: {input_path} -> {output_path}")
+    
+    try:
+        # Read markdown file
+        with open(input_path, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
+        
+        log.info(f"Read {len(markdown_content)} characters from input file")
+        
+        # Parse markdown
+        tokens = parse_markdown(markdown_content)
+        
+        # Create Word document
+        doc = Document()
+        
+        # Convert tokens to paragraphs
+        paragraphs, numbering_configs = tokens_to_docx_paragraphs(doc, tokens)
+        
+        # Save document
+        doc.save(output_path)
+        log.info(f"Successfully created Word document: {output_path}")
+        
+        return output_path
+    
+    except Exception as e:
+        log.error(f"Error converting Markdown to Word: {e}")
+        raise Exception(f"Conversion failed: {e}")
+
+
+def convert_markdown_content_to_word(content: str, output_path: str) -> str:
+    """Convert Markdown content to Word document"""
+    log.info(f"Converting Markdown content to Word: {output_path}")
+    
+    try:
+        # Parse markdown
+        tokens = parse_markdown(content)
+        
+        # Create Word document
+        doc = Document()
+        
+        # Convert tokens to paragraphs
+        paragraphs, numbering_configs = tokens_to_docx_paragraphs(doc, tokens)
+        
+        # Save document
+        doc.save(output_path)
+        log.info(f"Successfully created Word document from content: {output_path}")
+        
+        return output_path
+    
+    except Exception as e:
+        log.error(f"Error converting Markdown content to Word: {e}")
+        raise Exception(f"Conversion failed: {e}")

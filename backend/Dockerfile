@@ -1,23 +1,31 @@
-# Use Node.js 18 alpine as the base image
-FROM node:18-alpine
+# Use Python 3.12.12 slim image
+FROM python:3.12.12-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Install system dependencies (if needed for LaTeX processing)
+RUN apt-get update && apt-get install -y \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm install --production
+# Copy requirements file
+COPY requirements.txt .
 
-# Copy the rest of the backend code
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
 COPY . .
 
-# Create directories for uploads and outputs
-RUN mkdir -p uploads outputs
+# Create necessary directories
+RUN mkdir -p uploads outputs logs
 
-# Expose the backend port
+# Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Set environment variables
+ENV PORT=3000
+ENV PYTHONUNBUFFERED=1
+
+# Run the application
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3000"]
