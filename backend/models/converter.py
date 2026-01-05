@@ -54,27 +54,65 @@ class AnyXmlElement:
 def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
     """
     Convert MathML to Office Math Markup Language (OMML)
-    This is a simplified conversion - may need enhancement for complex formulas
+    Enhanced version with comprehensive MathML element support
     """
     try:
         # Parse MathML
         mathml = etree.fromstring(mathml_str.encode('utf-8'))
         
-        # Create OMML root element
+        # Create OMML root element with proper namespace
         omml = OxmlElement('m:oMath')
-        omml.set(qn('xmlns:m'), 'http://schemas.openxmlformats.org/officeDocument/2006/math')
+        # Note: Don't set xmlns:m here as it's already defined in the qn() calls
+        
+        def create_run(text: str, style: str = 'p') -> OxmlElement:
+            """Create an OMML run element with text and style
+            
+            Args:
+                text: The text content
+                style: 'i' for italic (variables), 'p' for plain (operators, numbers)
+            """
+            r = OxmlElement('m:r')
+            
+            # Add run properties with style
+            rPr = OxmlElement('m:rPr')
+            sty = OxmlElement('m:sty')
+            sty.set(qn('m:val'), style)
+            rPr.append(sty)
+            r.append(rPr)
+            
+            # Add text
+            t = OxmlElement('m:t')
+            t.text = text or ''
+            # Preserve spaces
+            if text and (text.startswith(' ') or text.endswith(' ')):
+                t.set(qn('xml:space'), 'preserve')
+            r.append(t)
+            
+            return r
         
         def convert_element(elem, parent_omml):
             """Recursively convert MathML elements to OMML"""
             tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
             
-            if tag == 'mn' or tag == 'mi' or tag == 'mo':
-                # Number, identifier, or operator
-                r = OxmlElement('m:r')
-                t = OxmlElement('m:t')
-                t.text = elem.text or ''
-                r.append(t)
-                parent_omml.append(r)
+            if tag == 'mn':
+                # Number - plain style
+                parent_omml.append(create_run(elem.text or '', 'p'))
+            
+            elif tag == 'mi':
+                # Identifier (variable) - italic style
+                parent_omml.append(create_run(elem.text or '', 'i'))
+            
+            elif tag == 'mo':
+                # Operator - plain style
+                parent_omml.append(create_run(elem.text or '', 'p'))
+            
+            elif tag == 'mtext':
+                # Text in math - plain style
+                parent_omml.append(create_run(elem.text or '', 'p'))
+            
+            elif tag == 'mspace':
+                # Space - plain style
+                parent_omml.append(create_run(' ', 'p'))
             
             elif tag == 'mfrac':
                 # Fraction
@@ -121,6 +159,24 @@ def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
                 sub.append(subElem)
                 parent_omml.append(sub)
             
+            elif tag == 'msubsup':
+                # Subscript and superscript
+                sSubSup = OxmlElement('m:sSubSup')
+                base = OxmlElement('m:e')
+                subElem = OxmlElement('m:sub')
+                supElem = OxmlElement('m:sup')
+                
+                children = list(elem)
+                if len(children) >= 3:
+                    convert_element(children[0], base)
+                    convert_element(children[1], subElem)
+                    convert_element(children[2], supElem)
+                
+                sSubSup.append(base)
+                sSubSup.append(subElem)
+                sSubSup.append(supElem)
+                parent_omml.append(sSubSup)
+            
             elif tag == 'msqrt':
                 # Square root
                 rad = OxmlElement('m:rad')
@@ -136,6 +192,129 @@ def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
                 rad.append(radPr)
                 rad.append(base)
                 parent_omml.append(rad)
+            
+            elif tag == 'mroot':
+                # Nth root
+                rad = OxmlElement('m:rad')
+                deg = OxmlElement('m:deg')
+                base = OxmlElement('m:e')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], base)
+                    convert_element(children[1], deg)
+                
+                rad.append(deg)
+                rad.append(base)
+                parent_omml.append(rad)
+            
+            elif tag == 'munder':
+                # Underscript
+                func = OxmlElement('m:func')
+                fName = OxmlElement('m:fName')
+                base = OxmlElement('m:e')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], fName)
+                    convert_element(children[1], base)
+                
+                func.append(fName)
+                func.append(base)
+                parent_omml.append(func)
+            
+            elif tag == 'mover':
+                # Overscript (like accent)
+                acc = OxmlElement('m:acc')
+                accPr = OxmlElement('m:accPr')
+                base = OxmlElement('m:e')
+                
+                children = list(elem)
+                if len(children) >= 2:
+                    convert_element(children[0], base)
+                    # Second child is the accent character
+                    if children[1].text:
+                        chrElem = OxmlElement('m:chr')
+                        chrElem.set(qn('m:val'), children[1].text)
+                        accPr.append(chrElem)
+                
+                acc.append(accPr)
+                acc.append(base)
+                parent_omml.append(acc)
+            
+            elif tag == 'munderover':
+                # Under and over script (like limits)
+                limLow = OxmlElement('m:limLow')
+                limUpp = OxmlElement('m:limUpp')
+                base = OxmlElement('m:e')
+                lim = OxmlElement('m:lim')
+                
+                children = list(elem)
+                if len(children) >= 3:
+                    convert_element(children[0], base)
+                    # Create nested structure for under and over
+                    innerBase = OxmlElement('m:e')
+                    convert_element(children[0], innerBase)
+                    limLow.append(innerBase)
+                    
+                    underLim = OxmlElement('m:lim')
+                    convert_element(children[1], underLim)
+                    limLow.append(underLim)
+                    
+                    limUpp.append(limLow)
+                    overLim = OxmlElement('m:lim')
+                    convert_element(children[2], overLim)
+                    limUpp.append(overLim)
+                    
+                    parent_omml.append(limUpp)
+                else:
+                    # Fallback
+                    for child in children:
+                        convert_element(child, parent_omml)
+            
+            elif tag == 'mfenced':
+                # Fenced expression (parentheses, brackets, etc.)
+                d = OxmlElement('m:d')
+                dPr = OxmlElement('m:dPr')
+                
+                # Get opening and closing characters
+                open_char = elem.get('open', '(')
+                close_char = elem.get('close', ')')
+                
+                begChr = OxmlElement('m:begChr')
+                begChr.set(qn('m:val'), open_char)
+                dPr.append(begChr)
+                
+                endChr = OxmlElement('m:endChr')
+                endChr.set(qn('m:val'), close_char)
+                dPr.append(endChr)
+                
+                d.append(dPr)
+                
+                # Add content
+                base = OxmlElement('m:e')
+                for child in elem:
+                    convert_element(child, base)
+                d.append(base)
+                
+                parent_omml.append(d)
+            
+            elif tag == 'mtable':
+                # Matrix/Table
+                matrix = OxmlElement('m:m')
+                
+                for row_elem in elem:
+                    if row_elem.tag.split('}')[-1] == 'mtr':
+                        mr = OxmlElement('m:mr')
+                        for cell_elem in row_elem:
+                            if cell_elem.tag.split('}')[-1] == 'mtd':
+                                e = OxmlElement('m:e')
+                                for child in cell_elem:
+                                    convert_element(child, e)
+                                mr.append(e)
+                        matrix.append(mr)
+                
+                parent_omml.append(matrix)
             
             elif tag == 'mrow' or tag == 'math':
                 # Row or root - process children
