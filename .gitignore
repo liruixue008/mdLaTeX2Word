@@ -6,3 +6,5 @@ dist/
 uploads/
 outputs/
 logs/
+*.pyc
+__pycache__/

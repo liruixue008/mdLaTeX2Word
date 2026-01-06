@@ -19,6 +19,114 @@ from lxml import etree
 from utils import log
 
 
+class ListManager:
+    """Manages list numbering for Word documents"""
+    
+    def __init__(self, doc: Document):
+        self.doc = doc
+        self.list_count = 0
+        self._ensure_numbering()
+    
+    def _ensure_numbering(self):
+        """Ensure the document has numbering part and basic abstract definitions"""
+        try:
+            # This triggers the creation of numbering.xml if it doesn't exist
+            # and defines the standard styles like 'List Number'
+            self.doc.part.numbering_part
+        except Exception:
+            pass
+
+    def get_new_num_id(self, is_ordered: bool = True) -> int:
+        """Create a new numbering definition and return its numId"""
+        self.list_count += 1
+        
+        # Access the underlying XML
+        numbering = self.doc.part.numbering_part.numbering_definitions._numbering
+        
+        # 1. Create a new abstractNum
+        abstract_num_id = self.list_count
+        abstractNum = OxmlElement('w:abstractNum')
+        abstractNum.set(qn('w:abstractNumId'), str(abstract_num_id))
+        
+        # Add basic multi-level support (Word expects 9 levels)
+        for level in range(9):
+            lvl = OxmlElement('w:lvl')
+            lvl.set(qn('w:ilvl'), str(level))
+            
+            start = OxmlElement('w:start')
+            start.set(qn('w:val'), '1')
+            lvl.append(start)
+            
+            numFmt = OxmlElement('w:numFmt')
+            if is_ordered:
+                numFmt.set(qn('w:val'), 'decimal')
+            else:
+                numFmt.set(qn('w:val'), 'bullet')
+            lvl.append(numFmt)
+            
+            lvlText = OxmlElement('w:lvlText')
+            if is_ordered:
+                # Use standard %1. format for level 0
+                text = f"%{level + 1}."
+                lvlText.set(qn('w:val'), text)
+            else:
+                lvlText.set(qn('w:val'), '•')
+            lvl.append(lvlText)
+            
+            lvlJc = OxmlElement('w:lvlJc')
+            lvlJc.set(qn('w:val'), 'left')
+            lvl.append(lvlJc)
+            
+            # Indentation
+            pPr = OxmlElement('w:pPr')
+            ind = OxmlElement('w:ind')
+            # 360 twips (0.25 inch) per level increment
+            left = 720 + (level * 360) 
+            hanging = 360
+            ind.set(qn('w:left'), str(left))
+            ind.set(qn('w:hanging'), str(hanging))
+            pPr.append(ind)
+            lvl.append(pPr)
+            
+            abstractNum.append(lvl)
+        
+        # Insert abstractNum into numbering.xml (must be before 'num' elements)
+        # Find the first 'num' element or end of list
+        nums = numbering.xpath('w:num')
+        if nums:
+            nums[0].addprevious(abstractNum)
+        else:
+            numbering.append(abstractNum)
+            
+        # 2. Create a new num (instance) that points to the abstractNum
+        num = OxmlElement('w:num')
+        num.set(qn('w:numId'), str(self.list_count + 100)) # Offset to avoid conflict
+        
+        abstractNumId = OxmlElement('w:abstractNumId')
+        abstractNumId.set(qn('w:val'), str(abstract_num_id))
+        num.append(abstractNumId)
+        
+        numbering.append(num)
+        
+        return self.list_count + 100
+
+    @staticmethod
+    def set_paragraph_numbering(paragraph, num_id: int, level: int = 0):
+        """Apply numbering attributes to a paragraph's XML"""
+        pPr = paragraph._element.get_or_add_pPr()
+        numPr = OxmlElement('w:numPr')
+        
+        ilvl = OxmlElement('w:ilvl')
+        ilvl.set(qn('w:val'), str(level))
+        numPr.append(ilvl)
+        
+        numId = OxmlElement('w:numId')
+        numId.set(qn('w:val'), str(num_id))
+        numPr.append(numId)
+        
+        pPr.append(numPr)
+
+
 class AnyXmlElement:
     """Helper class to create arbitrary XML elements for OMML"""
     
@@ -381,7 +489,9 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
     numbering_configs = []
     list_level = 0
     list_stack = []
-    list_counter = 0
+    
+    # Initialize numbering manager
+    list_manager = ListManager(doc)
     
     i = 0
     while i < len(tokens):
@@ -415,12 +525,15 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
         
         elif token_type == 'bullet_list_open' or token_type == 'ordered_list_open':
             list_level += 1
-            list_counter += 1
             is_ordered = token_type == 'ordered_list_open'
+            
+            # Create a new numbering instance for this list
+            num_id = list_manager.get_new_num_id(is_ordered)
             
             list_stack.append({
                 'type': 'ordered' if is_ordered else 'bullet',
-                'level': list_level
+                'level': list_level - 1,
+                'num_id': num_id
             })
         
         elif token_type == 'bullet_list_close' or token_type == 'ordered_list_close':
@@ -429,8 +542,12 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                 list_stack.pop()
         
         elif token_type == 'list_item_open':
+            # Find the list info from stack
+            list_info = list_stack[-1] if list_stack else None
+            
             # Process list item content
             i += 1
+            # Skip potential paragraph_open within list item to keep it simple
             if i < len(tokens) and tokens[i].type == 'paragraph_open':
                 i += 1
                 if i < len(tokens) and tokens[i].type == 'inline':
@@ -439,16 +556,23 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                     para = doc.add_paragraph()
                     parse_inline_content(para, inline_token)
                     
-                    # Set list style
-                    if list_stack:
-                        list_info = list_stack[-1]
+                    if list_info:
+                        # Apply style for basic formatting
                         if list_info['type'] == 'ordered':
                             para.style = 'List Number'
                         else:
                             para.style = 'List Bullet'
+                            
+                        # Apply unique numbering to force reset and level
+                        ListManager.set_paragraph_numbering(
+                            para, 
+                            list_info['num_id'], 
+                            list_info['level']
+                        )
                     
                     paragraphs.append(para)
             
+            # Continue will handle the skipping of tokens within the list item
             continue
         
         elif token_type == 'fence' or token_type == 'code_block':
