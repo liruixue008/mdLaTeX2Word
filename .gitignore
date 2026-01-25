@@ -8,3 +8,5 @@ outputs/
 logs/
 *.pyc
 __pycache__/
+/backend/models/__pycache__
+*.pyc

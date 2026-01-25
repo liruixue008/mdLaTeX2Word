@@ -106,7 +106,17 @@ async def not_found_handler(request: Request, exc):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle uncaught exceptions"""
-    log.error(f"Unhandled error: {exc}", exc_info=True)
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "success": False,
+                "message": exc.detail
+            }
+        )
+    
+    log.error(f"Unhandled error at {request.method} {request.url.path}: {exc}", exc_info=True)
+    
     return JSONResponse(
         status_code=500,
         content={

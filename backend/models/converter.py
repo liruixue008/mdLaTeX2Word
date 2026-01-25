@@ -164,9 +164,23 @@ def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
     Convert MathML to Office Math Markup Language (OMML)
     Enhanced version with comprehensive MathML element support
     """
+    if not mathml_str:
+        return None
+        
     try:
         # Parse MathML
-        mathml = etree.fromstring(mathml_str.encode('utf-8'))
+        try:
+            # Clean up the mathml string if it has encoding declarations that might conflict
+            if isinstance(mathml_str, str):
+                mathml_bytes = mathml_str.encode('utf-8')
+            else:
+                mathml_bytes = mathml_str
+            
+            mathml = etree.fromstring(mathml_bytes)
+        except etree.XMLSyntaxError as e:
+            log.error(f"XML Syntax Error in MathML: {e}")
+            # Try a more lenient parse if possible or just fail gracefully
+            return None
         
         # Create OMML root element with proper namespace
         omml = OxmlElement('m:oMath')
@@ -447,16 +461,27 @@ def mathml_to_omml(mathml_str: str) -> Optional[OxmlElement]:
 def convert_latex_to_omml(latex: str, is_block: bool = False) -> Optional[OxmlElement]:
     """Convert LaTeX formula to OMML for Word"""
     try:
+        if not latex:
+            return None
+        
         # Convert LaTeX to MathML
-        mathml = latex_to_mathml(latex)
+        try:
+            mathml = latex_to_mathml(latex)
+        except Exception as e:
+            log.error(f"latex2mathml conversion failed for: {latex[:50]}... Error: {e}")
+            return None
         
         # Convert MathML to OMML
-        omml = mathml_to_omml(mathml)
+        try:
+            omml = mathml_to_omml(mathml)
+        except Exception as e:
+            log.error(f"mathml_to_omml failed. Error: {e}")
+            return None
         
         return omml
     
     except Exception as e:
-        log.error(f"Error converting LaTeX to OMML: {e}")
+        log.error(f"General error in convert_latex_to_omml: {e}")
         return None
 
 
@@ -688,24 +713,29 @@ def convert_markdown_to_word(input_path: str, output_path: str) -> str:
 
 def convert_markdown_content_to_word(content: str, output_path: str) -> str:
     """Convert Markdown content to Word document"""
-    log.info(f"Converting Markdown content to Word: {output_path}")
+    log.info(f"Converting Markdown content to Word. Output: {output_path}")
     
     try:
         # Parse markdown
+        log.debug("Step 1: Parsing tokens")
         tokens = parse_markdown(content)
         
         # Create Word document
+        log.debug("Step 2: Initializing Document")
         doc = Document()
         
         # Convert tokens to paragraphs
+        log.debug(f"Step 3: Converting {len(tokens)} tokens to paragraphs")
         paragraphs, numbering_configs = tokens_to_docx_paragraphs(doc, tokens)
         
         # Save document
+        log.debug("Step 4: Saving document")
         doc.save(output_path)
         log.info(f"Successfully created Word document from content: {output_path}")
         
         return output_path
     
     except Exception as e:
-        log.error(f"Error converting Markdown content to Word: {e}")
-        raise Exception(f"Conversion failed: {e}")
+        log.error(f"Error in convert_markdown_content_to_word: {str(e)}", exc_info=True)
+        # Ensure we return a clean string for the exception to avoid serialization issues
+        raise Exception(f"Conversion failed at internal step. Technical details: {type(e).__name__}")

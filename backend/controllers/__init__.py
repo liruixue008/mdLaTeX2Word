@@ -110,6 +110,9 @@ async def convert_file(filename: str) -> dict:
 async def convert_content(content: str, filename: Optional[str] = None) -> dict:
     """Handle direct markdown content conversion"""
     try:
+        content_len = len(content) if content else 0
+        log.info(f"Starting direct content conversion (length: {content_len}, filename: {filename})")
+        
         if not content:
             log.warning("Content conversion attempt with no content")
             raise HTTPException(status_code=400, detail="Content is required")
@@ -135,7 +138,7 @@ async def convert_content(content: str, filename: Optional[str] = None) -> dict:
     except HTTPException:
         raise
     except Exception as e:
-        log.error(f"Error in convert_content: {e}")
+        log.error(f"Error in convert_content: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to convert content: {str(e)}")
 
 
