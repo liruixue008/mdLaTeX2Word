@@ -5,40 +5,29 @@
 ## 技术栈
 
 **后端 (Backend)**
-- Node.js + Express - Web 服务器框架
-- Multer - 文件上传处理
+- Python + FastAPI - Web 服务器框架
 - Markdown-it + markdown-it-texmath - Markdown 和 LaTeX 解析
 - KaTeX - LaTeX 公式渲染
-- docx - Word 文档生成
-- Winston - 日志记录
+- python-docx - Word 文档生成
 
 **前端 (Frontend)**
 - Vue 3 - 前端框架
 - Vue Router 4 - 路由管理
 - Vite - 构建工具
-- Tailwind CSS - 样式框架（深色主题）
+- Tailwind CSS - 样式框架（支持深色/浅色主题）
 - Axios - HTTP 客户端
 - Markdown-it + markdown-it-texmath - 实时预览解析
 - KaTeX - 实时预览公式渲染
+- Turndown - HTML 到 Markdown 转换（智能粘贴）
 
 ## 项目结构
 
 ```
 mdLaTeX2Word
 ├── backend/                  # 后端服务
-│   ├── app.js               # Express 应用入口
-│   ├── config.js            # 配置文件
-│   ├── controller/          # 控制器
-│   │   └── index.js         # 请求处理器
-│   ├── model/               # 模型
-│   │   └── index.js         # Markdown 转换逻辑
-│   ├── routes/              # 路由
-│   │   └── index.js         # API 路由定义
-│   ├── utils/               # 工具函数
-│   │   └── index.js         # 日志、文件清理等
+│   ├── app.py               # FastAPI 应用入口
 │   ├── uploads/             # 上传文件临时存储（自动创建）
-│   ├── outputs/             # 转换后的文件（自动创建）
-│   └── logs/                # 日志文件（自动创建）
+│   └── outputs/             # 转换后的文件（自动创建）
 ├── frontend/                # 前端应用
 │   ├── src/
 │   │   ├── assets/
@@ -47,12 +36,12 @@ mdLaTeX2Word
 │   │   ├── components/      # Vue 组件
 │   │   │   ├── FileUpload.vue        # 文件上传组件
 │   │   │   ├── ConversionStatus.vue  # 转换状态组件
-│   │   │   └── DownloadButton.vue    # 下载按钮组件
+│   │   │   └── ThemeToggle.vue       # 主题切换组件
 │   │   ├── router/          # 路由配置
 │   │   │   └── index.js
 │   │   ├── views/           # 页面视图
 │   │   │   ├── HomeView.vue          # 首页
-│   │   │   └── EditorView.vue        # 在线模拟编辑器
+│   │   │   └── EditorView.vue        # 在线编辑器（支持智能粘贴）
 │   │   ├── App.vue          # 主应用组件
 │   │   └── main.js          # 应用入口
 │   ├── index.html           # HTML 模板
@@ -67,25 +56,30 @@ mdLaTeX2Word
 
 ### 1. 安装依赖
 
+**后端依赖：**
 ```bash
-# 安装所有依赖（前端 + 后端）
-npm run install-all
+cd backend
+pip install -r requirements.txt
+```
 
-# 或者分别安装
-cd backend && npm install
-cd ../frontend && npm install
+**前端依赖：**
+```bash
+cd frontend
+npm install
 ```
 
 ### 2. 运行项目
 
 **启动后端服务器：**
 ```bash
-npm run server
-# 后端将运行在 http://localhost:3000
+cd backend
+python app.py
+# 后端将运行在 http://localhost:8000
 ```
 
 **启动前端开发服务器：**
 ```bash
+cd frontend
 npm run dev
 # 前端将运行在 http://localhost:5173
 ```
@@ -94,9 +88,111 @@ npm run dev
 
 1. 打开浏览器访问 `http://localhost:5173`
 2. **选择功能**：
-   - **离线转换**：点击首页的上传区域，拖拽或上传 Markdown 文件（支持 .md, .markdown, .tex），点击 "Upload & Convert"。
+   - **离线转换**：点击首页的上传区域，拖拽或上传 Markdown 文件（支持 .md, .markdown），点击 "Upload & Convert"。
    - **在线编辑**：点击首页的 "Try Online Editor" 或导航栏中的 "Online Editor"，进入实时预览编辑器。
 3. **导出文件**：在编辑器中完成编辑后，点击右上角的 "Export to Word" 按钮即可下载生成的 .docx 文件。
+
+## 功能特性
+
+### 核心功能
+
+- ✅ 支持 Markdown 文件上传（.md, .markdown）
+- ✅ 支持 LaTeX 数学公式（行内公式 `$...$` 和块级公式 `$$...$$`）
+- ✅ **在线实时预览编辑器**（左右分栏，实时渲染）
+- ✅ **在线编辑内容直接导出为 Word**
+- ✅ 拖拽上传文件
+- ✅ 实时转换状态显示
+- ✅ 深色/浅色主题切换
+- ✅ 响应式设计（支持移动端）
+- ✅ 同步滚动（编辑器与预览联动）
+
+### ⭐ 智能粘贴功能
+
+在线编辑器支持智能粘贴，能够自动检测剪贴板内容并进行适当处理：
+
+#### 工作原理
+
+1. **检测 LaTeX 公式**
+   - 自动检测剪贴板中的 HTML 内容是否包含 LaTeX 公式
+   - 支持多种 LaTeX 格式：`$...$`、`$$...$$`、`\(...\)`、`\[...\]`、MathML 标签
+   - 识别常见 LaTeX 命令：`\frac`、`\sqrt`、`\int`、`\sum`、`\begin{equation}` 等
+
+2. **智能处理策略**
+   - **不含 LaTeX**：直接粘贴纯文本，忽略所有 HTML 格式
+   - **包含 LaTeX**：将 HTML 转换为 Markdown 格式，保留公式和基本格式
+
+3. **自动修复转义问题**
+   - 修复双重转义的反斜杠：`\\sqrt` → `\sqrt`
+   - 修复被转义的方括号：`\[` → `[`、`\]` → `]`
+   - 确保 LaTeX 公式在编辑器中正确显示
+
+#### 支持的场景
+
+✅ **从 Word/Google Docs 复制包含公式的内容**
+```
+输入：二次方程 $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
+粘贴后：二次方程 $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
+```
+
+✅ **区间表示**
+```
+输入：$\exists x \in [-1, 3]$
+粘贴后：$\exists x \in [-1, 3]$
+```
+
+✅ **矩阵和复杂公式**
+```
+输入：$A = [a_{ij}]_{m \times n}$
+粘贴后：$A = [a_{ij}]_{m \times n}$
+```
+
+✅ **块级公式**
+```
+输入：$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+粘贴后：$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+```
+
+#### 技术细节
+
+- **HTML 转 Markdown**：使用 Turndown 库进行转换
+- **LaTeX 检测**：正则表达式匹配多种 LaTeX 模式
+- **转义修复**：后处理阶段修复 Markdown 转义导致的问题
+- **性能优化**：轻量级处理，不影响编辑体验
+
+## LaTeX 支持示例
+
+支持的 LaTeX 公式示例：
+
+```markdown
+# 示例文档
+
+这是一个行内公式：$E=mc^2$
+
+这是一个块级公式：
+
+$$
+\int_0^1 x^2 dx = \frac{1}{3}
+$$
+
+更复杂的公式：
+
+$$
+\frac{\partial f}{\partial x} = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}
+$$
+
+区间表示：
+
+$\exists x \in [-1, 3]$
+
+矩阵：
+
+$$
+A = \begin{bmatrix}
+a & b \\
+c & d
+\end{bmatrix}
+$$
+```
 
 ## API 文档
 
@@ -106,17 +202,15 @@ POST /api/upload
 Content-Type: multipart/form-data
 
 参数:
-- file: Markdown 或 LaTeX 文件
+- file: Markdown 文件
 
 响应:
 {
   "success": true,
   "message": "File uploaded successfully",
   "data": {
-    "filename": "example_1234567890_abc123.md",
-    "originalName": "example.md",
-    "size": 1024,
-    "path": "/path/to/uploads/example_1234567890_abc123.md"
+    "filename": "example_1234567890.md",
+    "originalName": "example.md"
   }
 }
 ```
@@ -128,7 +222,7 @@ Content-Type: application/json
 
 参数:
 {
-  "filename": "example_1234567890_abc123.md"
+  "filename": "example_1234567890.md"
 }
 
 响应:
@@ -136,17 +230,10 @@ Content-Type: application/json
   "success": true,
   "message": "File converted successfully",
   "data": {
-    "outputFilename": "example_1234567890_xyz789.docx",
-    "downloadUrl": "/api/download/example_1234567890_xyz789.docx"
+    "outputFilename": "example_1234567890.docx",
+    "downloadUrl": "/api/download/example_1234567890.docx"
   }
 }
-```
-
-### 下载文件
-```
-GET /api/download/:filename
-
-响应: Word 文档文件流
 ```
 
 ### 直接内容转换
@@ -171,89 +258,83 @@ Content-Type: application/json
 }
 ```
 
-### 健康检查
+### 下载文件
 ```
-GET /api/health
+GET /api/download/:filename
 
-响应:
-{
-  "success": true,
-  "message": "Server is running",
-  "timestamp": "2026-01-04T02:11:13.000Z"
-}
+响应: Word 文档文件流
 ```
 
-## 功能特性
+## 使用技巧
 
-- ✅ 支持 Markdown 文件上传（.md, .markdown, .tex）
-- ✅ 支持 LaTeX 数学公式（行内公式 `$...$` 和块级公式 `$$...$$`）
-- ✅ **在线实时预览编辑器**（左右分栏，实时渲染）
-- ✅ **在线编辑内容直接导出为 Word**
-- ✅ 拖拽上传文件
-- ✅ 实时转换状态显示
-- ✅ 自动文件清理（1小时后删除临时文件）
-- ✅ 完整的日志记录
-- ✅ 深色主题 UI
-- ✅ 响应式设计
+### 在线编辑器
 
-## LaTeX 支持示例
+1. **实时预览**：左侧编辑，右侧实时预览渲染效果
+2. **同步滚动**：编辑器和预览区域自动同步滚动位置
+3. **智能粘贴**：
+   - 从 Word/Google Docs 复制内容时，自动检测并处理 LaTeX 公式
+   - 不含公式的富文本会自动转为纯文本
+   - 公式中的特殊字符自动修复（反斜杠、方括号等）
+4. **主题切换**：点击右上角的主题按钮切换深色/浅色模式
+5. **导出 Word**：编辑完成后点击 "Export to Word" 直接下载
 
-支持的 LaTeX 公式示例：
+### 粘贴最佳实践
 
-```markdown
-# 示例文档
-
-这是一个行内公式：$E=mc^2$
-
-这是一个块级公式：
-
-$$
-\int_0^1 x^2 dx = \frac{1}{3}
-$$
-
-更复杂的公式：
-
-$$
-\frac{\partial f}{\partial x} = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}
-$$
-```
-
-## 配置说明
-
-### 后端配置 (backend/config.js)
-
-- `port`: 服务器端口（默认 3000）
-- `maxFileSize`: 最大文件大小（默认 10MB）
-- `allowedExtensions`: 允许的文件扩展名
-- `fileMaxAge`: 文件保留时间（默认 1 小时）
-
-### 前端配置 (frontend/vite.config.js)
-
-- 开发服务器端口：5173
-- API 代理：自动代理 `/api` 请求到后端
+- **复制包含公式的内容**：直接从 Word、Google Docs 等富文本编辑器复制，智能粘贴会自动处理
+- **复制纯文本**：从代码编辑器或纯文本编辑器复制，会保持原样
+- **复制格式化文本（无公式）**：会自动转为纯文本，去除所有格式
 
 ## 注意事项
 
 1. **文件大小限制**：上传文件最大 10MB
-2. **文件自动清理**：上传和转换的文件会在 1 小时后自动删除
-3. **无需数据库**：所有数据通过日志记录，无需配置数据库
-4. **LaTeX 渲染**：LaTeX 公式在 Word 中以斜体文本显示（Word 的 MathML 支持较复杂）
+2. **LaTeX 渲染**：LaTeX 公式在 Word 中会被转换为文本格式
+3. **浏览器兼容性**：建议使用 Chrome、Firefox、Edge 等现代浏览器
+4. **粘贴权限**：首次粘贴时浏览器可能会请求剪贴板访问权限
 
 ## 开发说明
 
 ### 添加新功能
 
-1. **后端**：在 `backend/controller/index.js` 添加新的请求处理器
+1. **后端**：在 `backend/app.py` 添加新的 API 端点
 2. **前端**：在 `frontend/src/components/` 创建新的 Vue 组件
 
-### 日志查看
+### 调试智能粘贴
 
-日志文件位置：
-- 所有日志：`backend/logs/combined.log`
-- 错误日志：`backend/logs/error.log`
-- 控制台：实时彩色输出
+在浏览器控制台中可以查看粘贴处理的详细信息：
+```javascript
+// 查看剪贴板内容
+navigator.clipboard.read().then(items => {
+  items.forEach(item => {
+    console.log(item.types)
+  })
+})
+```
+
+## 更新日志
+
+### v1.1.0 (2026-01-29)
+- ✨ 新增智能粘贴功能
+- ✨ 自动检测和处理 LaTeX 公式
+- 🐛 修复 LaTeX 公式中反斜杠双重转义问题
+- 🐛 修复方括号在 LaTeX 公式中被错误转义的问题
+- 💄 优化编辑器同步滚动体验
+- 💄 改进主题切换功能
+
+### v1.0.0
+- 🎉 初始版本发布
+- ✨ 支持 Markdown 转 Word
+- ✨ 支持 LaTeX 公式渲染
+- ✨ 在线编辑器
+- ✨ 实时预览
 
 ## 许可证
 
 MIT
- 
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 联系方式
+
+如有问题或建议，请通过 GitHub Issues 联系。

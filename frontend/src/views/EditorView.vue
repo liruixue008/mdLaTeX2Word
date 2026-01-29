@@ -198,28 +198,34 @@ const handlePaste = (event) => {
 
 // Fix double-escaped backslashes in LaTeX formulas
 const fixLatexEscaping = (markdown) => {
+  // Helper function to fix escaping in formula content
+  const fixFormulaEscaping = (formula) => {
+    // Fix double backslashes: \\ → \
+    let fixed = formula.replace(/\\\\/g, '\\')
+    // Fix escaped square brackets: \[ → [, \] → ]
+    fixed = fixed.replace(/\\\[/g, '[')
+    fixed = fixed.replace(/\\\]/g, ']')
+    return fixed
+  }
+  
   // Fix inline math $...$
   markdown = markdown.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
-    const fixed = formula.replace(/\\\\/g, '\\')
-    return `$${fixed}$`
+    return `$${fixFormulaEscaping(formula)}$`
   })
   
   // Fix block math $$...$$
   markdown = markdown.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
-    const fixed = formula.replace(/\\\\/g, '\\')
-    return `$$${fixed}$$`
+    return `$$${fixFormulaEscaping(formula)}$$`
   })
   
   // Fix \(...\)
   markdown = markdown.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
-    const fixed = formula.replace(/\\\\/g, '\\')
-    return `\\(${fixed}\\)`
+    return `\\(${fixFormulaEscaping(formula)}\\)`
   })
   
   // Fix \[...\]
   markdown = markdown.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
-    const fixed = formula.replace(/\\\\/g, '\\')
-    return `\\[${fixed}\\]`
+    return `\\[${fixFormulaEscaping(formula)}\\]`
   })
   
   return markdown
