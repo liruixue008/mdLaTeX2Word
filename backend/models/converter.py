@@ -7,8 +7,8 @@ import re
 from io import BytesIO
 
 from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, Inches, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from markdown_it import MarkdownIt
@@ -532,6 +532,11 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                 
                 para = doc.add_paragraph(heading_text)
                 para.style = f'Heading {level}'
+                
+                # 美化标题样式:添加适当的段前段后间距
+                para.paragraph_format.space_before = Pt(12 if level == 1 else 10)
+                para.paragraph_format.space_after = Pt(6)
+                
                 paragraphs.append(para)
             
             i += 2  # Skip inline and heading_close
@@ -543,6 +548,12 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                 
                 para = doc.add_paragraph()
                 parse_inline_content(para, inline_token)
+                
+                # 美化段落样式:添加适当的行间距和段后间距
+                para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+                para.paragraph_format.line_spacing = 1.5
+                para.paragraph_format.space_after = Pt(8)
+                
                 paragraphs.append(para)
             
             i += 2  # Skip inline and paragraph_close
@@ -604,15 +615,48 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
             para = doc.add_paragraph(token.content)
             para.style = 'No Spacing'
             
+            # 美化代码块样式
             for run in para.runs:
                 run.font.name = 'Courier New'
                 run.font.size = Pt(10)
+                run.font.color.rgb = RGBColor(51, 51, 51)  # 深灰色文字
+            
+            # 添加浅灰色背景
+            pPr = para._element.get_or_add_pPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:color'), 'auto')
+            shd.set(qn('w:fill'), 'F5F5F5')  # 浅灰色背景
+            pPr.append(shd)
+            
+            # 添加段落间距
+            para.paragraph_format.space_before = Pt(6)
+            para.paragraph_format.space_after = Pt(6)
+            para.paragraph_format.left_indent = Pt(12)
+            para.paragraph_format.right_indent = Pt(12)
             
             paragraphs.append(para)
         
         elif token_type == 'hr':
-            para = doc.add_paragraph('─' * 50)
+            # 创建浅灰色分割线
+            para = doc.add_paragraph()
             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # 添加底部边框作为分割线
+            pPr = para._element.get_or_add_pPr()
+            pBdr = OxmlElement('w:pBdr')
+            bottom = OxmlElement('w:bottom')
+            bottom.set(qn('w:val'), 'single')
+            bottom.set(qn('w:sz'), '6')  # 线条粗细 (1/8 pt)
+            bottom.set(qn('w:space'), '1')
+            bottom.set(qn('w:color'), 'D3D3D3')  # 浅灰色 (Light Gray)
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+            
+            # 添加段落间距
+            para.paragraph_format.space_before = Pt(12)
+            para.paragraph_format.space_after = Pt(12)
+            
             paragraphs.append(para)
         
         elif token_type == 'math_block' or token_type == 'math_block_end':
@@ -642,9 +686,26 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                     cols += 1
                 temp_i += 1
             
-            # 2. Add Word table
+            # 2. Add Word table with beautiful styling
             table = doc.add_table(rows=rows, cols=cols)
-            table.style = 'Table Grid'
+            table.style = 'Light Grid Accent 1'  # 使用更美观的表格样式
+            
+            # 设置表格边框为浅灰色
+            tbl = table._element
+            tblPr = tbl.tblPr
+            if tblPr is None:
+                tblPr = OxmlElement('w:tblPr')
+                tbl.insert(0, tblPr)
+            
+            # 设置表格边框
+            tblBorders = OxmlElement('w:tblBorders')
+            for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+                border = OxmlElement(f'w:{border_name}')
+                border.set(qn('w:val'), 'single')
+                border.set(qn('w:sz'), '4')  # 细边框
+                border.set(qn('w:color'), 'CCCCCC')  # 浅灰色边框
+                tblBorders.append(border)
+            tblPr.append(tblBorders)
             
             # 3. Process table tokens
             row_idx = -1
@@ -662,13 +723,23 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                     cell = table.cell(row_idx, col_idx)
                     
                     if is_header:
-                        # Apply shading to header cells
+                        # Apply shading to header cells with better color
                         tcPr = cell._tc.get_or_add_tcPr()
                         shd = OxmlElement('w:shd')
                         shd.set(qn('w:val'), 'clear')
                         shd.set(qn('w:color'), 'auto')
-                        shd.set(qn('w:fill'), 'F2F2F2') # Light gray background for header
+                        shd.set(qn('w:fill'), 'E8E8E8')  # 稍深的浅灰色背景
                         tcPr.append(shd)
+                    
+                    # 为所有单元格添加内边距
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    tcMar = OxmlElement('w:tcMar')
+                    for margin_name in ['top', 'left', 'bottom', 'right']:
+                        margin = OxmlElement(f'w:{margin_name}')
+                        margin.set(qn('w:w'), '100')  # 单元格内边距
+                        margin.set(qn('w:type'), 'dxa')
+                        tcMar.append(margin)
+                    tcPr.append(tcMar)
                     
                     # Clear default paragraph in cell if it exists
                     if cell.paragraphs and not cell.paragraphs[0].text:
