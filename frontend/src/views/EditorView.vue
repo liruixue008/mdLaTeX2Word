@@ -150,6 +150,30 @@ const exportToWord = async () => {
   margin-bottom: 0.75rem;
   margin-top: 1.5rem;
 }
+.markdown-preview h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+}
+.markdown-preview h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+.markdown-preview h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+}
+.markdown-preview h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+}
 .markdown-preview p {
   margin-bottom: 1rem;
   line-height: 1.6;
