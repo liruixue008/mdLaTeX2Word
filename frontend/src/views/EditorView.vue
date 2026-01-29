@@ -71,6 +71,7 @@ import tm from 'markdown-it-texmath'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import axios from 'axios'
+import TurndownService from 'turndown'
 
 const { t } = useI18n()
 
@@ -87,12 +88,18 @@ onMounted(() => {
   
   // Setup scroll synchronization
   setupScrollSync()
+  
+  // Setup paste event handler
+  if (editorTextarea.value) {
+    editorTextarea.value.addEventListener('paste', handlePaste)
+  }
 })
 
 onBeforeUnmount(() => {
   // Clean up event listeners
   if (editorTextarea.value) {
     editorTextarea.value.removeEventListener('scroll', handleEditorScroll)
+    editorTextarea.value.removeEventListener('paste', handlePaste)
   }
   if (previewPane.value) {
     previewPane.value.removeEventListener('scroll', handlePreviewScroll)
@@ -143,6 +150,122 @@ const handlePreviewScroll = () => {
     isScrolling = false
   }, 50)
 }
+
+// Initialize Turndown service for HTML to Markdown conversion
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced'
+})
+
+// Smart paste handler
+const handlePaste = (event) => {
+  const clipboardData = event.clipboardData || window.clipboardData
+  if (!clipboardData) return
+  
+  // Get HTML and plain text from clipboard
+  const htmlContent = clipboardData.getData('text/html')
+  const plainText = clipboardData.getData('text/plain')
+  
+  // If there's no HTML content, let default paste behavior happen
+  if (!htmlContent) return
+  
+  // Check if HTML contains LaTeX formulas
+  const hasLatex = containsLatex(htmlContent)
+  
+  // If no LaTeX found, paste plain text instead
+  if (!hasLatex) {
+    event.preventDefault()
+    insertTextAtCursor(plainText)
+    return
+  }
+  
+  // If LaTeX found, convert HTML to Markdown
+  event.preventDefault()
+  try {
+    let markdown = turndownService.turndown(htmlContent)
+    
+    // Post-process: fix double-escaped backslashes in LaTeX formulas
+    // Turndown escapes backslashes, but we need single backslashes in LaTeX
+    markdown = fixLatexEscaping(markdown)
+    
+    insertTextAtCursor(markdown)
+  } catch (error) {
+    console.error('Error converting HTML to Markdown:', error)
+    // Fallback to plain text if conversion fails
+    insertTextAtCursor(plainText)
+  }
+}
+
+// Fix double-escaped backslashes in LaTeX formulas
+const fixLatexEscaping = (markdown) => {
+  // Fix inline math $...$
+  markdown = markdown.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
+    const fixed = formula.replace(/\\\\/g, '\\')
+    return `$${fixed}$`
+  })
+  
+  // Fix block math $$...$$
+  markdown = markdown.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+    const fixed = formula.replace(/\\\\/g, '\\')
+    return `$$${fixed}$$`
+  })
+  
+  // Fix \(...\)
+  markdown = markdown.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
+    const fixed = formula.replace(/\\\\/g, '\\')
+    return `\\(${fixed}\\)`
+  })
+  
+  // Fix \[...\]
+  markdown = markdown.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
+    const fixed = formula.replace(/\\\\/g, '\\')
+    return `\\[${fixed}\\]`
+  })
+  
+  return markdown
+}
+
+// Check if HTML content contains LaTeX formulas
+const containsLatex = (html) => {
+  // Common LaTeX delimiters and patterns
+  const latexPatterns = [
+    /\$\$[\s\S]*?\$\$/,           // Block math: $$...$$
+    /\$[^$\n]+?\$/,               // Inline math: $...$
+    /\\\[[\s\S]*?\\\]/,           // Block math: \[...\]
+    /\\\([\s\S]*?\\\)/,           // Inline math: \(...\)
+    /<math[\s\S]*?<\/math>/i,    // MathML tags
+    /\\begin\{equation\}/i,       // LaTeX equation environment
+    /\\begin\{align\}/i,          // LaTeX align environment
+    /\\frac\{/,                   // LaTeX fraction command
+    /\\sqrt\{/,                   // LaTeX square root
+    /\\int[\s_^]/,                // LaTeX integral
+    /\\sum[\s_^]/,                // LaTeX summation
+    /\\prod[\s_^]/,               // LaTeX product
+    /\\lim[\s_]/,                 // LaTeX limit
+  ]
+  
+  return latexPatterns.some(pattern => pattern.test(html))
+}
+
+// Insert text at cursor position in textarea
+const insertTextAtCursor = (text) => {
+  const textarea = editorTextarea.value
+  if (!textarea) return
+  
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const currentValue = content.value
+  
+  // Insert text at cursor position
+  content.value = currentValue.substring(0, start) + text + currentValue.substring(end)
+  
+  // Set cursor position after inserted text
+  setTimeout(() => {
+    textarea.selectionStart = textarea.selectionEnd = start + text.length
+    textarea.focus()
+  }, 0)
+}
+
 
 const isExporting = ref(false)
 const errorMessage = ref('')
