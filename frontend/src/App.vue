@@ -59,7 +59,10 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 container mx-auto px-6 py-12">
+    <main :class="[
+      'flex-1 py-12',
+      $route.name === 'editor' ? 'px-6' : 'container mx-auto px-6'
+    ]">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
