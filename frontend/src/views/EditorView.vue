@@ -35,6 +35,7 @@
       <div class="flex flex-col min-h-0">
         <div class="mb-2 text-sm text-theme-muted font-medium">{{ $t('editor.markdownLabel') }}</div>
         <textarea
+          ref="editorTextarea"
           v-model="content"
           :placeholder="$t('editor.placeholder')"
           class="flex-1 w-full bg-theme-surface border border-theme-border rounded-xl p-4 text-theme-text focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-none font-mono"
@@ -45,6 +46,7 @@
       <div class="flex flex-col min-h-0">
         <div class="mb-2 text-sm text-theme-muted font-medium">{{ $t('editor.previewLabel') }}</div>
         <div 
+          ref="previewPane"
           class="flex-1 bg-theme-surface border border-theme-border rounded-xl p-6 overflow-auto markdown-preview"
           v-html="renderedContent"
         ></div>
@@ -62,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MarkdownIt from 'markdown-it'
 import tm from 'markdown-it-texmath'
@@ -73,11 +75,74 @@ import axios from 'axios'
 const { t } = useI18n()
 
 const content = ref('')
+const editorTextarea = ref(null)
+const previewPane = ref(null)
+
+// Flag to prevent infinite scroll loop
+let isScrolling = false
 
 onMounted(() => {
   content.value = '# Welcome to mdLaTeX2Word\n\nYou can type **Markdown** here and include *LaTeX* formulas like this:\n\nThe quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.\n\nOr block formulas:\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\nFeel free to experiment!'
  //# 欢迎使用 mdLaTeX2Word\n\n您可以直接在此输入 **Markdown** 内容，并包含 *LaTeX* 公式，例如：\n\n二次方程求根公式：$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$。\n\n或者块级公式：\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n\n尽情尝试吧！
+  
+  // Setup scroll synchronization
+  setupScrollSync()
 })
+
+onBeforeUnmount(() => {
+  // Clean up event listeners
+  if (editorTextarea.value) {
+    editorTextarea.value.removeEventListener('scroll', handleEditorScroll)
+  }
+  if (previewPane.value) {
+    previewPane.value.removeEventListener('scroll', handlePreviewScroll)
+  }
+})
+
+const setupScrollSync = () => {
+  if (editorTextarea.value && previewPane.value) {
+    editorTextarea.value.addEventListener('scroll', handleEditorScroll)
+    previewPane.value.addEventListener('scroll', handlePreviewScroll)
+  }
+}
+
+const handleEditorScroll = () => {
+  if (isScrolling) return
+  
+  isScrolling = true
+  
+  const editor = editorTextarea.value
+  const preview = previewPane.value
+  
+  if (editor && preview) {
+    const scrollPercentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight)
+    const targetScrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight)
+    preview.scrollTop = targetScrollTop
+  }
+  
+  setTimeout(() => {
+    isScrolling = false
+  }, 50)
+}
+
+const handlePreviewScroll = () => {
+  if (isScrolling) return
+  
+  isScrolling = true
+  
+  const editor = editorTextarea.value
+  const preview = previewPane.value
+  
+  if (editor && preview) {
+    const scrollPercentage = preview.scrollTop / (preview.scrollHeight - preview.clientHeight)
+    const targetScrollTop = scrollPercentage * (editor.scrollHeight - editor.clientHeight)
+    editor.scrollTop = targetScrollTop
+  }
+  
+  setTimeout(() => {
+    isScrolling = false
+  }, 50)
+}
 
 const isExporting = ref(false)
 const errorMessage = ref('')
