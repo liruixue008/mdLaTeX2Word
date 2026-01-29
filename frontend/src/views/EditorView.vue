@@ -160,7 +160,7 @@ const md = new MarkdownIt({
     macros: { "\\RR": "\\mathbb{R}" },
     throwOnError: false 
   }
-})
+}).enable('table')
 
 const renderedContent = computed(() => {
   return md.render(content.value)
@@ -267,5 +267,46 @@ const exportToWord = async () => {
   padding: 1rem;
   background: var(--color-hover);
   border-radius: 0.5rem;
+}
+
+/* Table Styles */
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.markdown-preview th {
+  background-color: #f3f4f6; /* Force a visible light gray for headers */
+  color: #111827;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+}
+
+.markdown-preview td {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.markdown-preview tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-preview tr:nth-child(even) {
+  background-color: rgba(var(--color-hover-rgb), 0.3);
+}
+
+.markdown-preview .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 </style>

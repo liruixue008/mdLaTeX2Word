@@ -630,24 +630,87 @@ def tokens_to_docx_paragraphs(doc: Document, tokens: List[Dict[str, Any]]) -> Tu
                 
                 paragraphs.append(para)
         
+        elif token_type == 'table_open':
+            # 1. Look ahead to find table dimensions and alignments
+            rows = 0
+            cols = 0
+            temp_i = i + 1
+            while temp_i < len(tokens) and tokens[temp_i].type != 'table_close':
+                if tokens[temp_i].type == 'tr_open':
+                    rows += 1
+                if rows == 1 and tokens[temp_i].type in ('th_open', 'td_open'):
+                    cols += 1
+                temp_i += 1
+            
+            # 2. Add Word table
+            table = doc.add_table(rows=rows, cols=cols)
+            table.style = 'Table Grid'
+            
+            # 3. Process table tokens
+            row_idx = -1
+            col_idx = -1
+            
+            i += 1
+            while i < len(tokens) and tokens[i].type != 'table_close':
+                t = tokens[i]
+                if t.type == 'tr_open':
+                    row_idx += 1
+                    col_idx = -1
+                elif t.type in ('th_open', 'td_open'):
+                    is_header = t.type == 'th_open'
+                    col_idx += 1
+                    cell = table.cell(row_idx, col_idx)
+                    
+                    if is_header:
+                        # Apply shading to header cells
+                        tcPr = cell._tc.get_or_add_tcPr()
+                        shd = OxmlElement('w:shd')
+                        shd.set(qn('w:val'), 'clear')
+                        shd.set(qn('w:color'), 'auto')
+                        shd.set(qn('w:fill'), 'F2F2F2') # Light gray background for header
+                        tcPr.append(shd)
+                    
+                    # Clear default paragraph in cell if it exists
+                    if cell.paragraphs and not cell.paragraphs[0].text:
+                        para = cell.paragraphs[0]
+                    else:
+                        para = cell.add_paragraph()
+                    
+                    # Look for content
+                    temp_j = i + 1
+                    while temp_j < len(tokens) and tokens[temp_j].type not in ('th_close', 'td_close', 'tr_close', 'table_close'):
+                        if tokens[temp_j].type == 'inline':
+                            parse_inline_content(para, tokens[temp_j], force_bold=is_header)
+                        temp_j += 1
+                    # Skip tokens we've processed as content
+                    i = temp_j - 1
+                i += 1
+            
+            # Note: table is not a paragraph, but we might want to track it for complex layouts
+            continue
+        
         i += 1
     
     log.info(f"Converted tokens to {len(paragraphs)} paragraphs")
     return paragraphs, numbering_configs
 
 
-def parse_inline_content(paragraph, inline_token) -> None:
+def parse_inline_content(paragraph, inline_token, force_bold: bool = False) -> None:
     """Parse inline content and add runs to paragraph"""
     if not hasattr(inline_token, 'children') or not inline_token.children:
         if hasattr(inline_token, 'content') and inline_token.content:
-            paragraph.add_run(inline_token.content)
+            run = paragraph.add_run(inline_token.content)
+            if force_bold:
+                run.bold = True
         return
     
     for child in inline_token.children:
         child_type = child.type
         
         if child_type == 'text':
-            paragraph.add_run(child.content)
+            run = paragraph.add_run(child.content)
+            if force_bold:
+                run.bold = True
         
         elif child_type == 'strong':
             run = paragraph.add_run(child.content)
