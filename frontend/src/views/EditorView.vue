@@ -32,7 +32,7 @@
     <!-- Editor Split Pane -->
     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
       <!-- Left: Editor -->
-      <div class="flex flex-col min-h-0">
+      <div class="flex flex-col min-h-0 h-[350px] md:h-auto">
         <div class="mb-2 text-sm text-theme-muted font-medium">{{ $t('editor.markdownLabel') }}</div>
         <textarea
           ref="editorTextarea"
